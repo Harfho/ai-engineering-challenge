@@ -26,6 +26,9 @@ CATEGORY_ACTIONS = {
     "network_timeout":
      "Set an explicit timeout and one bounded retry for this operation; "
      "check service health before repeating the call.",
+    "database_connection_drop":
+     "Wrap long-running database operations in retry-with-reconnect logic "
+     "and verify connection-pool health before starting large batches.",
     "dependency":
      "Pin and install required dependencies before running the affected "
      "command; verify imports resolve in the target environment.",

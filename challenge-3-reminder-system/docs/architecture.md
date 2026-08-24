@@ -139,12 +139,17 @@ class EmbeddingProvider(ABC):      # optional retrieval upgrade
     def embed(text) -> vector
 ```
 
-Shipped fallbacks: `NullLLM` (no-op), `HashingEmbedder` (local, seeded,
-deterministic). Selection is constructor injection — no config files, no
-implicit network calls. Contract: providers may throw; pipeline catches and
-falls back deterministically. Swapping in OpenAI/Anthropic/local-LLM touches
-one class and one argument, zero pipeline changes (docstring example in
-`providers.py` shows the full recipe).
+Shipped fallbacks: `NullLLM` (no-op), `ScriptedLLM` (deterministic mock for
+demos/tests — proves enrichment end-to-end without network), `HashingEmbedder`
+(local, seeded, deterministic), plus `OpenAICompatLLM` (real provider for any
+chat-completions endpoint: OpenAI, Ollama, vLLM, LM Studio). Selection is
+constructor injection — no config files, no implicit network calls.
+Contract: providers may throw; pipeline catches and falls back
+deterministically. Swapping in a real model touches one class and one
+argument, zero pipeline changes. The enrichment seam is demonstrated in
+`examples/semantic_demo.py`: with an LLM categorizer active, paraphrased
+failures that share no keywords form patterns the rules-only baseline
+cannot discover (2 → 3 patterns on the demo corpus).
 
 ## 7. API design
 

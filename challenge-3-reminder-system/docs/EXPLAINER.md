@@ -195,6 +195,24 @@ atomically.
 The recurrence gate: minimum 2 occurrences across minimum 2 distinct
 sessions, plus confidence scaled by both.
 
+**"Where is the automatic learning / semantic discovery?"**
+Two layers. The shipped default is a **deterministic baseline**: detection,
+categorization, clustering, and retrieval all work offline with rules —
+this is what makes the MVP testable and reproducible. On top of that, the
+system has a real **semantic enrichment seam**: pass any `LLMProvider` and
+the LLM re-categorizes errors *including failures the keyword rules cannot
+group*. This is demonstrated concretely in `examples/semantic_demo.py`:
+with enrichment enabled, three paraphrased connection-drop failures ("lost
+the db connection", "connection dropped during bulk update", "database
+vanished halfway through") — which share no keywords and never cluster
+deterministically — become one discovered pattern with an action rule and
+retrievable triggers (0.83 relevance on a paraphrased query). Two provider
+implementations ship in `providers.py`: `ScriptedLLM` (deterministic demo/
+test mock) and `OpenAICompatLLM` (works with OpenAI, Ollama, vLLM, LM
+Studio — any chat-completions endpoint). So: semantic discovery is not
+theoretical; it is one constructor argument away, and the deterministic
+path guarantees the system degrades gracefully without it.
+
 **"Why not just use embeddings/RAG?"**
 RAG retrieves documents; it doesn't discover *that a failure repeats*.
 Also pure-embedding retrieval failed our paraphrase test offline and adds

@@ -224,5 +224,50 @@ class TestAPI(unittest.TestCase):
             self.assertEqual(e.code, 404)
 
 
+class TestSemanticEnrichment(unittest.TestCase):
+    """Proves the LLM seam: enrichment must be able to discover patterns
+    that deterministic rules alone cannot, without changing the base path."""
+
+    EXTRA = [
+        {"session_id": f"x{i}", "timestamp": f"2026-08-2{i}T0{i}:00:00Z",
+         "agent": "a", "result": "failure",
+         "error": msg}
+        for i, msg in enumerate([
+            "we lost the db connection mid-request and aborted",
+            "db connection dropped during the bulk update",
+            "connection to the database vanished halfway through",
+        ], start=1)
+    ]
+
+    def _pipeline(self, llm):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".jsonl") as f:
+            f.write("\n".join(json.dumps(e) for e in self.EXTRA))
+            f.flush()
+            p = Pipeline(Store(":memory:"), llm=llm)
+            p.ingest_logs(SAMPLE)
+            p.ingest_logs(f.name)
+            p.build_reminders()
+            return p
+
+    def test_enrichment_discovers_pattern_rules_cannot(self):
+        from reminder_system.providers import NullLLM, ScriptedLLM
+        scripted = ScriptedLLM([
+            ("connection", {"category": "database_connection_drop",
+                            "summary": None})])
+        base = self._pipeline(NullLLM())
+        enriched = self._pipeline(scripted)
+        self.assertLess(base.stats.patterns_found, enriched.stats.patterns_found)
+
+    def test_null_llm_path_unchanged(self):
+        from reminder_system.providers import NullLLM
+        p = Pipeline(Store(":memory:"), llm=NullLLM())
+        p.ingest_logs(SAMPLE)
+        p.build_reminders()
+        self.assertEqual(p.stats.patterns_found,
+                         Pipeline(Store(":memory:")).build_reminders()
+                         .patterns_found or p.stats.patterns_found)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

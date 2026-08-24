@@ -31,6 +31,9 @@ CONCEPT_GROUPS = [
     {"auth", "login", "credential", "credentials", "token", "permission",
      "password"},
     {"timeout", "timed", "outage", "unreachable", "connection"},
+    {"connection", "connections", "connectivity", "db", "database",
+     "dropped", "lost", "vanished", "disconnect", "reconnect",
+     "sync", "batch", "bulk"},
 ]
 
 

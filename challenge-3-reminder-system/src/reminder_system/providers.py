@@ -48,6 +48,74 @@ class NullLLM(LLMProvider):
         return {"category": None, "summary": None}
 
 
+class ScriptedLLM(LLMProvider):
+    """Deterministic mock LLM for demos/tests: maps message substrings to
+    categories/summaries. Proves the enrichment seam end-to-end without
+    any network."""
+
+    name = "scripted"
+
+    def __init__(self, rules):
+        # rules: list of (substring, {"category": ..., "summary": ...})
+        self.rules = list(rules)
+
+    def analyze_error(self, raw_message: str, context: Dict) -> Dict:
+        low = raw_message.lower()
+        for needle, result in self.rules:
+            if needle.lower() in low:
+                return dict(result)
+        return {"category": None, "summary": None}
+
+
+class OpenAICompatLLM(LLMProvider):
+    """Real provider for any OpenAI-compatible /chat/completions endpoint
+    (OpenAI, Anthropic-compatible gateways, vLLM, Ollama, LM Studio...).
+    Uses only the stdlib; failures raise so the pipeline can fall back.
+
+    Example:
+        llm = OpenAICompatLLM(base_url="http://localhost:11434/v1",
+                              api_key="ollama", model="llama3.2")
+        Pipeline(store, llm=llm)
+    """
+
+    name = "openai-compat"
+
+    def __init__(self, base_url: str, api_key: str, model: str,
+                 timeout_s: int = 20):
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.model = model
+        self.timeout_s = timeout_s
+
+    def analyze_error(self, raw_message: str, context: Dict) -> Dict:
+        import json as _json
+        import urllib.request
+
+        prompt = (
+            "Classify this AI-agent failure log line. Reply ONLY with JSON "
+            '{"category": "<one of: database_migration, api_rate_limit, '
+            'authentication, network_timeout, dependency, other>", '
+            '"summary": "<max 12 words>".}\n'
+            f"Agent: {context.get('agent','?')}\nLog: {raw_message[:400]}")
+        req = urllib.request.Request(
+            f"{self.base_url}/chat/completions",
+            data=_json.dumps({
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0,
+            }).encode(),
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {self.api_key}"})
+        with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
+            payload = _json.loads(resp.read())
+        text = payload["choices"][0]["message"]["content"].strip()
+        start, end = text.find("{"), text.rfind("}") + 1
+        parsed = _json.loads(text[start:end])
+        cat = parsed.get("category")
+        return {"category": cat if cat != "other" else None,
+                "summary": parsed.get("summary")}
+
+
 class EmbeddingProvider(ABC):
     """Text -> dense vector, used optionally to improve retrieval."""
 
