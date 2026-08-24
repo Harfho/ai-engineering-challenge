@@ -89,25 +89,28 @@ def extract_patterns(events: List[ErrorEvent],
     for ev in events:
         by_cat.setdefault(ev.category or "__uncategorized__", []).append(ev)
 
-    clusters: List[List[ErrorEvent]] = []
-    for cat, members in by_cat.items():
-        if cat != "__uncategorized__":
-            clusters.append(members)
-            continue
-        bags: List[Counter] = []
-        for ev in members:
-            bag = Counter(tokenize(ev.normalized_message))
-            best_ci, best_sim = -1, 0.0
-            for ci, cbags in enumerate(bags):
-                sim = max(_similarity(b, bag) for b in cbags)
-                if sim > best_sim:
-                    best_ci, best_sim = ci, sim
-            if best_ci >= 0 and best_sim >= similarity_threshold:
-                clusters[best_ci].append(ev)
-                bags[best_ci].append(bag)
-            else:
-                clusters.append([ev])
-                bags.append([bag])
+    # Uncategorized events are clustered in their own index space so their
+    # positions can never collide with the pre-seeded category clusters.
+    uncat_clusters: List[List[ErrorEvent]] = []
+    uncat_bags: List[List[Counter]] = []
+    for ev in by_cat.get("__uncategorized__", []):
+        bag = Counter(tokenize(ev.normalized_message))
+        best_ci, best_sim = -1, 0.0
+        for ci, cbags in enumerate(uncat_bags):
+            sim = max(_similarity(b, bag) for b in cbags)
+            if sim > best_sim:
+                best_ci, best_sim = ci, sim
+        if best_ci >= 0 and best_sim >= similarity_threshold:
+            uncat_clusters[best_ci].append(ev)
+            uncat_bags[best_ci].append(bag)
+        else:
+            uncat_clusters.append([ev])
+            uncat_bags.append([bag])
+
+    clusters = [members
+                for cat, members in by_cat.items()
+                if cat != "__uncategorized__"]
+    clusters.extend(uncat_clusters)
 
     patterns: List[ErrorPattern] = []
     for members in clusters:

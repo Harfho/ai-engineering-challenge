@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -47,25 +48,34 @@ CREATE TABLE IF NOT EXISTS reminders (
 
 
 class Store:
+    """Thread-safe store: the HTTP API serves requests from worker threads,
+    so the connection allows cross-thread use and every operation is
+    serialized under a re-entrant lock."""
+
     def __init__(self, path: str | Path = ":memory:"):
         self.path = str(path)
-        self.conn = sqlite3.connect(self.path)
+        self._lock = threading.RLock()
+        self.conn = sqlite3.connect(self.path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
-        self.conn.executescript(_SCHEMA)
+        with self._lock:
+            self.conn.executescript(_SCHEMA)
 
     # -- logs --------------------------------------------------------------
 
     def insert_log(self, e: LogEntry) -> int:
-        cur = self.conn.execute(
-            "INSERT INTO logs(session_id,timestamp,agent,user_request,"
-            "agent_action,result,error,metadata) VALUES(?,?,?,?,?,?,?,?)",
-            (e.session_id, e.timestamp, e.agent, e.user_request,
-             e.agent_action, e.result, e.error, json.dumps(e.metadata)))
-        self.conn.commit()
-        return cur.lastrowid
+        with self._lock:
+            cur = self.conn.execute(
+                "INSERT INTO logs(session_id,timestamp,agent,user_request,"
+                "agent_action,result,error,metadata) VALUES(?,?,?,?,?,?,?,?)",
+                (e.session_id, e.timestamp, e.agent, e.user_request,
+                 e.agent_action, e.result, e.error, json.dumps(e.metadata)))
+            self.conn.commit()
+            return cur.lastrowid
 
     def all_logs(self) -> List[LogEntry]:
-        rows = self.conn.execute("SELECT * FROM logs ORDER BY row_id").fetchall()
+        with self._lock:
+            rows = self.conn.execute(
+                "SELECT * FROM logs ORDER BY row_id").fetchall()
         return [self._row_to_log(r) for r in rows]
 
     @staticmethod
@@ -81,7 +91,7 @@ class Store:
 
     def replace_reminders(self, reminders: Iterable[Reminder]) -> None:
         """Reminders are derived data: regenerate atomically."""
-        with self.conn:
+        with self._lock, self.conn:
             self.conn.execute("DELETE FROM reminders")
             for r in reminders:
                 self.conn.execute(
@@ -92,13 +102,15 @@ class Store:
                      r.frequency, r.created_at, r.source_pattern_id))
 
     def all_reminders(self) -> List[Reminder]:
-        rows = self.conn.execute(
-            "SELECT * FROM reminders ORDER BY frequency DESC").fetchall()
+        with self._lock:
+            rows = self.conn.execute(
+                "SELECT * FROM reminders ORDER BY frequency DESC").fetchall()
         return [self._row_to_reminder(r) for r in rows]
 
     def get_reminder(self, reminder_id: str) -> Optional[Reminder]:
-        r = self.conn.execute("SELECT * FROM reminders WHERE reminder_id=?",
-                              (reminder_id,)).fetchone()
+        with self._lock:
+            r = self.conn.execute("SELECT * FROM reminders WHERE reminder_id=?",
+                                  (reminder_id,)).fetchone()
         return self._row_to_reminder(r) if r else None
 
     @staticmethod
@@ -116,7 +128,8 @@ class Store:
 
     def count(self, table: str) -> int:
         assert table in ("logs", "reminders")
-        return self.conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        with self._lock:
+            return self.conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
 
     def close(self):
         self.conn.close()

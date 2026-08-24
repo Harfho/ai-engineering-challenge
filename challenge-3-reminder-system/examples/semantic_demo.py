@@ -97,12 +97,14 @@ def main():
             print(f"  action: {r.recommended_action}")
             print("  (these three paraphrased failures share NO keywords;")
             print("   only semantic categorization could group them)")
-        hits = enriched.service.query("sync data between systems overnight")
+        hits = enriched.service.query(
+            "the database connection keeps dropping mid-operation")
         print(f"\nretrieval after enrichment: {len(hits)} hit(s) for a "
               f"paraphrased connection-drop query")
         if hits:
             print(f"  -> {hits[0].reminder.reminder_id} "
-                  f"rel={hits[0].relevance:.2f}")
+                  f"rel={hits[0].relevance:.2f} "
+                  f"matched_on={hits[0].matched_on}")
 
 
 if __name__ == "__main__":

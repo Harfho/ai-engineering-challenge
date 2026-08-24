@@ -50,17 +50,35 @@ def parse_line(line: str) -> tuple[LogEntry | None, str | None]:
     ), None
 
 
+def _ingest_json_array(text: str) -> Tuple[List[LogEntry], List[str]]:
+    """Parse a whole-file JSON array with the same validation as JSONL."""
+    entries: List[LogEntry] = []
+    problems: List[str] = []
+    try:
+        arr = json.loads(text)
+    except json.JSONDecodeError as e:
+        return [], [f"invalid json: {e}"]
+    if not isinstance(arr, list):
+        return [], ["top-level json value is not an array"]
+    for i, obj in enumerate(arr, 1):
+        entry, err = parse_line(json.dumps(obj))
+        if err:
+            problems.append(f"item {i}: {err}")
+        else:
+            entries.append(entry)
+    return entries, problems
+
+
 def ingest_file(path: str | Path, store: Store) -> Tuple[int, List[str]]:
     """Ingest a .jsonl or .json file. Returns (inserted_count, problems)."""
     path = Path(path)
     text = path.read_text(encoding="utf-8")
-    entries: List[Dict] = []
+    problems: List[str] = []
+    entries: List[LogEntry]
     if path.suffix == ".json" and text.lstrip().startswith("["):
-        arr = json.loads(text)
-        problems: List[str] = []
-        entries = [(o, None) for o in ([a for a in arr] if isinstance(arr, list) else [])]
+        entries, problems = _ingest_json_array(text)
     else:
-        entries, problems = [], []
+        entries = []
         for i, line in enumerate(text.splitlines(), 1):
             if not line.strip():
                 continue
@@ -68,10 +86,9 @@ def ingest_file(path: str | Path, store: Store) -> Tuple[int, List[str]]:
             if err:
                 problems.append(f"line {i}: {err}")
             else:
-                entries.append((entry, None))
+                entries.append(entry)
     inserted = 0
-    for item, _err in entries:
-        e = item[0] if isinstance(item, tuple) else item
+    for e in entries:
         store.insert_log(e)
         inserted += 1
     return inserted, problems

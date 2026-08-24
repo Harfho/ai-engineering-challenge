@@ -41,13 +41,13 @@ curl -s -X POST localhost:8000/reminders/query \
 
 ```
 logs.jsonl ──> ingest ──> identify errors ──> cluster patterns ──> generate reminders ──> SQLite
-                 (validated)  (deterministic      (category-first +       (rule-table actions,
-                               detectors +         lexical fallback)       evidence-linked)
-                               optional LLM)
+                 (validated)  (deterministic      (category-first +       (LLM-authored lesson
+                               detectors +         lexical fallback)       > curated playbook >
+                               optional LLM)                               evidence-derived text)
                                                                        │
 new user request ────────────────────────────────────────> retrieval <──┘
-                                              (TF-IDF + concept expansion
-                                               + optional embeddings)
+                                               (gated TF-IDF + concept bridging
+                                                + optional embeddings)
 ```
 
 Key behaviors:
@@ -56,35 +56,60 @@ Key behaviors:
   gate detection.
 - **Patterns require recurrence**: ≥2 occurrences across ≥2 sessions.
   One bad session never becomes a nagging reminder.
-- **Retrieval filters, it does not dump**: unrelated requests get silence;
-  matched reminders come ranked with relevance scores and `matched_on`
-  evidence.
-- **Every reminder is evidence-linked** to the log rows that justify it.
+- **Lessons are derived, not pre-written**: a brand-new recurring failure
+  with no curated playbook still produces an honest reminder whose text is
+  derived from its own evidence (frequency, sessions, most common message
+  variants). With a provider attached, `LLMProvider.author_lesson` can write
+  the lesson and action for ANY novel failure mode.
+- **Retrieval requires evidence**: a candidate must share specific tokens
+  with a reminder's triggers/description, or supply two distinct concept
+  seeds (e.g. "column" + "table" ⇒ schema work). Generic advice vocabulary
+  ("retry", "check") never matches, so unrelated requests get silence;
+  matched reminders come ranked with bounded relevance scores and
+  `matched_on` provenance. Calibrated against a 20-query adversarial
+  battery in the test suite.
+- **Every reminder is evidence-linked** to the log rows that justify it,
+  and the store is safe under the threaded HTTP server.
 
 ## Layout
 
 ```
 src/reminder_system/
   models.py       dataclasses shared by all stages
-  store.py        SQLite persistence (logs append-only; reminders derived)
+  store.py        SQLite persistence (thread-safe; logs append-only,
+                  reminders derived)
   providers.py    LLMProvider / EmbeddingProvider + offline fallbacks
   ingest.py       JSONL/JSON loading, validation, malformed-line reporting
   analysis.py     error detection, normalization, categorization
   patterns.py     clustering (category-first; lexical fallback), triggers
-  reminders.py    rule-table action selection, confidence scoring
-  retrieval.py    TF-IDF + query expansion + optional embedding cosine
+  reminders.py    layered content: authored lesson > curated playbook >
+                  evidence-derived fallback; confidence scoring
+  retrieval.py    gated TF-IDF + concept bridging + optional embedding cosine
   pipeline.py     orchestration facade
   api.py          stdlib HTTP API (health / list / query)
-data/sample_logs.jsonl   realistic multi-session history incl. one bad line
+data/sample_logs.jsonl   multi-session history incl. one malformed line and
+                         failures outside every built-in category
 examples/run_demo.py     reproducible end-to-end demo
-tests/                   19 stdlib-unittest cases, fully offline
+tests/                   30 stdlib-unittest cases, fully offline
 docs/architecture.md     design decisions & trade-offs (read this second)
 ```
 
 ## Extending
 
-- Plug a real LLM: implement `LLMProvider.analyze_error` and pass it to
-  `Pipeline(store, llm=...)`. See the docstring example in `providers.py`.
+- Plug a real LLM: implement `analyze_error` and optionally
+  `author_lesson` on `LLMProvider`, then pass it to `Pipeline(store,
+  llm=...)`. See the docstring example in `providers.py`.
 - Plug real embeddings: pass an `EmbeddingProvider` to `ReminderService`.
 - New issue types: add entries to `analysis.CATEGORIES` +
-  `reminders.CATEGORY_ACTIONS` (data, not code).
+  `reminders.CATEGORY_ACTIONS` (data, not code) — or attach a provider and
+  let it author lessons for categories that don't exist yet.
+
+## Known limits
+
+- Retrieval is lexical + deterministic concept groups. It handles
+  paraphrase only where a category rule or two-seed bridge applies;
+  arbitrary phrasing needs a real embedding provider.
+- The offline embedder (`HashingEmbedder`) captures token overlap, not
+  deep semantics — reproducibility over quality.
+- Sample history is small on purpose: it demonstrates behavior, it is not
+  a benchmark.

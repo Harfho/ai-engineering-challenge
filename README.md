@@ -8,7 +8,7 @@ bottlenecks, and a working reminder-system prototype.
 |-----------|-------------|--------|
 | 1 — Server investigation (`185.146.233.222`, authorized) | [`challenge-1-server/ANSWERS.md`](challenge-1-server/ANSWERS.md) → `report.md` | Complete |
 | 2 — Three bottlenecks no Big Player talks about | [`challenge-2-ai-bottlenecks/analysis.md`](challenge-2-ai-bottlenecks/analysis.md) | Complete |
-| 3 — Model-agnostic AI reminder system prototype | [`challenge-3-reminder-system/README.md`](challenge-3-reminder-system/README.md) | Complete (21/21 tests) |
+| 3 — Model-agnostic AI reminder system prototype | [`challenge-3-reminder-system/README.md`](challenge-3-reminder-system/README.md) | Complete (30/30 tests) |
 
 ## Structure
 
@@ -57,7 +57,9 @@ logs in → failures detected deterministically → recurring patterns clustered
 (≥2 occurrences across ≥2 sessions) → reminders generated into SQLite →
 context-matched retrieval that stays silent when nothing applies. LLM
 providers plug in behind an interface; `semantic_demo.py` proves enrichment
-discovers patterns keyword rules cannot group. 21/21 offline tests pass.
+discovers patterns keyword rules cannot group, and unknown recurring
+failures get lessons derived from their own evidence. 30/30 offline tests
+pass.
 
 ## How to read this repository
 
@@ -74,7 +76,7 @@ discovers patterns keyword rules cannot group. 21/21 offline tests pass.
 - Challenge 3, no installs needed:
   ```bash
   cd challenge-3-reminder-system
-  PYTHONPATH=src python3 -m unittest discover tests    # expect: OK (21 tests)
+  PYTHONPATH=src python3 -m unittest discover tests    # expect: OK (30 tests)
   PYTHONPATH=src python3 examples/run_demo.py          # deterministic demo
   PYTHONPATH=src python3 examples/semantic_demo.py     # LLM-enrichment demo
   ```

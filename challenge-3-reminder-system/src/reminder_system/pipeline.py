@@ -58,7 +58,7 @@ class Pipeline:
         logs = self.store.all_logs()
         events = identify_errors(logs, self.llm)
         patterns = extract_patterns(events)
-        reminders = generate_reminders(patterns)
+        reminders = generate_reminders(patterns, llm=self.llm)
         self.store.replace_reminders(reminders)
         self.service.refresh()
         self.stats.error_events = len(events)

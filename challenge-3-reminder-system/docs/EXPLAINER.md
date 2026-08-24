@@ -62,9 +62,9 @@ gap is the whole point of the prototype.
   request      │          │                                       │
                 │          ▼                                       │
                 │   ┌──────────────────┐                           │
-                │   │ RETRIEVE         │  tokenize → expand        │
-                │   │ score vs every   │  (column→schema/migration)│
-                │   │ reminder: TF-IDF │  → score → tanh → rank    │
+                │   │ RETRIEVE         │  tokenize → evidence gate │
+                │   │ score vs every   │  (2 seeds ⇒ schema work)  │
+                │   │ reminder: TF-IDF │  → score → rank           │
                 │   └────────┬─────────┘                           │
                 │            ▼                                     │
                 │   above threshold? ──no──> SILENCE (by design)   │
@@ -94,12 +94,14 @@ migration", "relation does not exist").
    database schema, check for and create a pending migration file…"*,
    confidence 0.95, evidence = the exact log rows.
 5. **Retrieve**: weeks later a user types *"I want to add a column to the
-   users table"* — no word in common with "migration"! Concept expansion
-   bridges it: {column, table} → {schema, migration, database…}. Score 0.78
-   after tanh calibration → reminder returned with `matched_on` showing
-   exactly which concepts fired.
+   users table"* — no word in common with "migration"! Two concept-group
+   seeds ({column, table}) approve the bridge to {schema, migration,
+   database…}. Score ~0.56 (expansion-only, capped below direct matches)
+   → reminder returned with `matched_on` showing exactly which concepts
+   fired.
 
-And the flip side: *"refactor the notification module"* matches nothing
+And the flip side: *"refactor the notification module"* clears no evidence
+gate and matches nothing
 → empty response. **Silence is a feature**: a reminder system that nags on
 weak associations gets ignored within a week.
 
@@ -144,20 +146,24 @@ logs should claim certainty. Evidence links point at exact log rows.
 to the incidents that justify it.
 
 ### Retrieval (`retrieval.py`)
-Score = TF-IDF-weighted overlap between query tokens and each reminder's
-triggers (3× weight) + description + action text, PLUS concept-group
-expansion at half weight (curated synonym sets), PLUS optional embedding
-cosine. Final relevance = `tanh(score)` — bounded 0–1 regardless of query
-length. Top-k returned above threshold 0.25. *Why expansion:* users say
-"add a column", never "check migration discipline" — without the bridge,
-the right reminder never fires (we measured 0.13 without it).
-*Why tanh:* our first normalization divided by best-score × query length;
-long natural requests diluted their own topical core below threshold.
-tanh is monotonic, bounded, length-independent.
+A candidate must first clear an evidence gate: either ≥1 specific query
+token present in the reminder's triggers/description, or two distinct
+concept-group seeds (e.g. "column" + "table" ⇒ schema work). Generic advice
+vocabulary ("retry", "check", "page") can seed the bridge but never counts
+as direct evidence, and action text is excluded from matching entirely.
+Score = TF-IDF-weighted overlap on triggers (3× weight) + description, plus
+a capped concept-group boost for approved candidates, plus optional
+embedding cosine for direct matches. Relevance = `M/(M+1.4)` capped at 0.97
+(direct) or 0.78 (expansion-only); top-k returned above threshold 0.45.
+*Why gated:* an early version matched any reminder through its advice
+boilerplate — "flaky UI animation" fired a rate-limit warning at 0.997 via
+the word "retry". The battery in the test suite (20 unrelated requests)
+locks the fix in.
 
 ### Storage (`store.py`)
 SQLite: `logs` table append-only (ground truth), `reminders` table fully
-derived and regenerated atomically per build. *Why SQLite:* zero-ops,
+derived and regenerated atomically per build. The connection is shared
+across HTTP worker threads under a re-entrant lock. *Why SQLite:* zero-ops,
 ships with Python, SQL-inspectable, trivially resettable for tests.
 *Why reminders are derived:* avoids stale-schema drift; recompute is cheap.
 
@@ -222,8 +228,10 @@ a dependency. (Hybrid scoring already includes an embedding cosine slot.)
 
 **"How do you know retrieval works?"**
 Tests assert behavior end-to-end: paraphrased queries rank the correct
-reminder first; irrelevant queries return empty; top_k respected; results
-survive a persistence roundtrip. 21 tests, all offline/deterministic.
+reminder first; an adversarial battery of 20 unrelated developer requests
+(including "retry the flaky UI animation assertion") fires nothing; direct
+matches must outrank expanded ones; results survive a persistence roundtrip.
+30 tests, all offline/deterministic.
 
 **"What are its limits?"** (say these proactively — credibility)
 Batch-only learning (no streaming updates) · category table maintenance

@@ -1,7 +1,7 @@
 # Architecture — Model-Agnostic Reminder System
 
 > STATUS: final. This document reflects the system as implemented and
-> tested (21/21 offline tests, reproducible demo). Where a design changed
+> tested (30/30 offline tests, reproducible demo). Where a design changed
 > during development, the *reason* is recorded — dead ends are evidence.
 
 ## 1. Components
@@ -106,34 +106,52 @@ later used by retrieval.
 
 ## 5b. Retrieval strategy
 
-**Shipped: hybrid deterministic scoring**, `rel = tanh(direct + 0.5·expansion + 0.5·cosine)`:
+**Shipped after recalibration: gated evidence matching** (second pivot — see
+below for the first):
 
-- Direct TF-IDF-weighted token overlap between query and each reminder's
-  triggers (3× weight) + description + action text.
-- Concept-group query expansion (small curated synonym sets: e.g.
-  column/table/alter → schema/migration/database). Needed because users say
-  "add a column", not "check migration discipline". Deterministic and
-  auditable, unlike latent embeddings.
-- Optional cosine from the pluggable embedder; default `HashingEmbedder`
-  (feature hashing — captures token structure offline, no downloads).
-- `tanh` calibration bounds relevance to [0,1) independent of query length;
-  earlier best-score normalization was rejected because long natural-language
-  requests diluted their own topical core below threshold (observed in
-  testing: 8-token query scored 0.13 despite perfect topical match).
+- Matching evidence comes only from a reminder's triggers + description.
+  Action text is excluded: every action contains generic verbs ("retry",
+  "check"), which let unrelated queries match any reminder through its
+  advice boilerplate.
+- A candidate needs an evidence pathway: ≥1 specific token shared with
+  triggers/description, OR ≥2 distinct concept-group seeds (column+table ⇒
+  schema work). Generic process vocabulary ("retry", "request", "page") can
+  seed expansion but never counts as direct evidence.
+- Concept-group expansion applies only to approved candidates, capped at two
+  tokens by IDF weight — one ambiguous word cannot drag in a whole topic.
+- Relevance = `min(cap, M / (M + 1.4))` where M combines direct TF-IDF mass,
+  capped expansion mass, and (only for direct matches) optional embedding
+  cosine. The ratio form keeps scores separated instead of saturating near
+  1.0; expansion-only matches are capped at 0.78 so they can't outrank real
+  evidence. Threshold default 0.45.
+- Calibrated against a 20-query adversarial battery (unrelated developer
+  requests must fire nothing) plus positive paraphrase cases, both enforced
+  in the test suite.
 
 Retrieval **filters, it does not dump**: below-threshold matches return as
 silence. A reminder system that interrupts on weak associations trains users
 to ignore it — precision matters more than recall here.
 
+*First pivot (history):* best-score normalization was replaced by `tanh`
+because long natural-language requests diluted their own topical core
+(observed: 8-token perfect match scored 0.13). *Second pivot:* adversarial
+review showed `tanh(direct + expansion)` saturates the other way — an
+animation question matched a rate-limit reminder at 0.997 through the word
+"retry" alone, while score could not separate that from a true hit at 0.778.
+The gated model above removes both failure modes rather than re-tuning
+constants.
+
 Rejected alternatives: pure embeddings (opaque, needs network/model),
-pure keyword (failed the paraphrase test above), LLM reranking per query
-(non-deterministic, latency, cost — and unnecessary at library sizes ≤100s).
+pure keyword without gating (fires on advice boilerplate), LLM reranking per
+query (non-deterministic, latency, cost — and unnecessary at library sizes
+≤100s).
 
 ## 6. Model abstraction
 
 ```python
 class LLMProvider(ABC):            # optional semantic enrichment
     def analyze_error(raw, context) -> {"category", "summary"}
+    def author_lesson(samples) -> {"lesson", "action"} | None   # optional
 
 class EmbeddingProvider(ABC):      # optional retrieval upgrade
     def embed(text) -> vector
@@ -146,16 +164,23 @@ chat-completions endpoint: OpenAI, Ollama, vLLM, LM Studio). Selection is
 constructor injection — no config files, no implicit network calls.
 Contract: providers may throw; pipeline catches and falls back
 deterministically. Swapping in a real model touches one class and one
-argument, zero pipeline changes. The enrichment seam is demonstrated in
+argument, zero pipeline changes.
+
+Reminder content is layered, most-specific-first: an authored lesson from
+`author_lesson` if the provider supports it; otherwise the curated playbook
+for known categories; otherwise text DERIVED from the pattern's own evidence
+(frequency, sessions, top message variants) — so a novel recurring failure
+never gets generic boilerplate. The enrichment seam is demonstrated in
 `examples/semantic_demo.py`: with an LLM categorizer active, paraphrased
 failures that share no keywords form patterns the rules-only baseline
-cannot discover (2 → 3 patterns on the demo corpus).
+cannot discover (3 → 4 patterns on the demo corpus).
 
 ## 7. API design
 
-Stdlib `http.server` (ThreadingHTTPServer). Zero-dependency rationale:
-brief prioritizes simple reproducible setup; framework swap touches only
-`api.py`.
+Stdlib `http.server` (ThreadingHTTPServer) over a thread-safe store: the
+SQLite connection allows cross-thread use and every store operation runs
+under a re-entrant lock. Zero-dependency rationale: brief prioritizes simple
+reproducible setup; framework swap touches only `api.py`.
 
 | Endpoint | Semantics |
 |---|---|
@@ -170,17 +195,21 @@ a reminder fired — machine-readable trust.
 
 ## 8. Testing strategy
 
-21 tests, stdlib `unittest`, fully offline and deterministic:
+30 tests, stdlib `unittest`, fully offline and deterministic:
 
-- **Per stage**: ingest validation/coercion; error identification incl.
-  normalization stripping ids; clustering (recurrence gates, session spread);
+- **Per stage**: ingest validation/coercion incl. whole-file JSON arrays;
+  error identification incl. normalization stripping ids; clustering
+  (recurrence gates, session spread, identical-failure clustering);
   reminder field bounds + evidence integrity + action routing.
+- **Adversarial regressions**: uncategorized events must not corrupt
+  category-cluster counts (index-bug regression); a 20-query unrelated-
+  request battery must fire nothing; direct matches must outrank expanded
+  ones.
 - **Integration**: full pipeline on the sample corpus; SQLite persistence
   roundtrip (same reminders after reload).
-- **Retrieval behavior**: correct ranking for paraphrased schema/API queries,
-  silence for irrelevant ones, `top_k` respected.
 - **API**: real HTTP over ephemeral port — health, query success, 422
-  validation, 404 routing.
+  validation, 404 routing, and concurrent GET /reminders from 8 worker
+  threads (thread-safety regression).
 
 Determinism guarantee: no network, no randomness beyond uuid ids (excluded
 from assertions), fixed sample data. Tests double as behavioral spec.

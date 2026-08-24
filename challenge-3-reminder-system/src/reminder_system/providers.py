@@ -38,6 +38,18 @@ class LLMProvider(ABC):
     def analyze_error(self, raw_message: str, context: Dict) -> Dict:
         """Return {'category': str|None, 'summary': str|None}."""
 
+    def author_lesson(self, samples: List[str]) -> Dict | None:
+        """Optional second seam: write a NEW lesson from raw evidence.
+
+        Given several example messages of a recurring failure, return
+        {'lesson': str, 'action': str} — or None if the provider does not
+        support authoring. This is how the system learns failure modes that
+        no built-in rule anticipated; the deterministic fallback in
+        reminders.py derives an evidence-cited lesson instead when this
+        returns None.
+        """
+        return None
+
 
 class NullLLM(LLMProvider):
     """Deterministic no-op: signals that no semantic enrichment is active."""
@@ -50,21 +62,34 @@ class NullLLM(LLMProvider):
 
 class ScriptedLLM(LLMProvider):
     """Deterministic mock LLM for demos/tests: maps message substrings to
-    categories/summaries. Proves the enrichment seam end-to-end without
-    any network."""
+    categories/summaries and optionally to authored lessons. Proves both
+    enrichment seams end-to-end without any network."""
 
     name = "scripted"
 
     def __init__(self, rules):
-        # rules: list of (substring, {"category": ..., "summary": ...})
+        # rules: list of (substring, {"category": ..., "summary": ...,
+        #                             "lesson": ..., "action": ...})
         self.rules = list(rules)
 
-    def analyze_error(self, raw_message: str, context: Dict) -> Dict:
-        low = raw_message.lower()
+    def _match(self, text: str) -> Dict | None:
+        low = text.lower()
         for needle, result in self.rules:
             if needle.lower() in low:
-                return dict(result)
-        return {"category": None, "summary": None}
+                return result
+        return None
+
+    def analyze_error(self, raw_message: str, context: Dict) -> Dict:
+        r = self._match(raw_message)
+        return dict(r) if r else {"category": None, "summary": None}
+
+    def author_lesson(self, samples: List[str]) -> Dict | None:
+        for s in samples:
+            r = self._match(s)
+            if r and (r.get("lesson") or r.get("action")):
+                return {"lesson": r.get("lesson"),
+                        "action": r.get("action")}
+        return None
 
 
 class OpenAICompatLLM(LLMProvider):
@@ -114,6 +139,39 @@ class OpenAICompatLLM(LLMProvider):
         cat = parsed.get("category")
         return {"category": cat if cat != "other" else None,
                 "summary": parsed.get("summary")}
+
+    def author_lesson(self, samples: List[str]) -> Dict | None:
+        import json as _json
+        import urllib.request
+
+        joined = "\n".join(f"- {s[:300]}" for s in samples[:5])
+        prompt = (
+            "An AI agent repeated the following failure across sessions:\n"
+            f"{joined}\n"
+            "Reply ONLY with JSON: {\"lesson\": \"<one-sentence root-cause "
+            "hypothesis>\", \"action\": \"<concrete next step to prevent or "
+            "handle it>\"}")
+        req = urllib.request.Request(
+            f"{self.base_url}/chat/completions",
+            data=_json.dumps({
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0,
+            }).encode(),
+            headers={"Content-Type": "application/json",
+                     "Authorization": f"Bearer {self.api_key}"})
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
+                payload = _json.loads(resp.read())
+            text = payload["choices"][0]["message"]["content"].strip()
+            start, end = text.find("{"), text.rfind("}") + 1
+            parsed = _json.loads(text[start:end])
+            if not (parsed.get("lesson") and parsed.get("action")):
+                return None
+            return {"lesson": str(parsed["lesson"]),
+                    "action": str(parsed["action"])}
+        except Exception:
+            return None
 
 
 class EmbeddingProvider(ABC):
