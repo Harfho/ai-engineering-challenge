@@ -1,4 +1,6 @@
-# AI Engineering Challenge
+# ai-engineering-challenge
+
+Technical assessment — security investigation, AI systems analysis, and a model-agnostic context reminder prototype.
 
 Solutions to a three-part technical hiring assessment.
 
