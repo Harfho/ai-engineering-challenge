@@ -4,8 +4,10 @@
 Player talks about *because none of them want to* — name them, explain why
 they exist.
 
-**Status:** Complete. v2 supersedes `archive/v1-first-pass/` after
-reviewer feedback: the first pass answered with famous problems (benchmark
+**Status:** Complete. v3 supersedes v2's argument structure (kept in
+`archive/v1-first-pass/`): every bottleneck now explicitly answers what /
+why it exists / why it worsens at scale / why Big Players stay quiet.
+v1→v2 history: the first pass answered with famous problems (benchmark
 saturation, data exhaustion, inference costs). Real issues — but findable
 on page one of any search, which fails the brief's actual test.
 
@@ -17,20 +19,28 @@ an executive saying it plainly on stage must be unthinkable.
 
 ## The three
 
-1. **Model churn: AI infrastructure with no stability guarantees** —
-   60–62-day deprecation windows, APIs retired within a year of launch,
-   parameters that break silently, no LTS tier from anyone. Facts sit in
-   vendor changelogs; saying "our models are fashion, not Postgres" is
-   unsayable.
+1. **Rented cognition: the dependency and control asymmetry** — a small
+   number of vendors unilaterally control models, interfaces, pricing,
+   lifecycle, and serving behavior for every independent AI product.
+   Deprecation clocks are just the visible symptom; the structure is
+   dependence without infrastructure obligations. Facts sit in vendor
+   changelogs; saying "you depend on us beyond what any contract covers"
+   is unsayable on stage.
 2. **The rights wall arrived before the volume wall** — usable training
    data got a price ($1.5B settlement → ~$3k/work reference floor) and
-   expiry dates (Reddit's deals up for renegotiation mid-2026) before it
-   ever ran out. The public debate about "running out of internet" is the
-   decoy; the action is in court dockets and contracts nobody keynotes.
-3. **Effective-context collapse** — spec-sheet windows (128K–1M) vs
-   measured effective context (often ≤8K once lexical cheating is removed:
-   RULER, NoLiMa). Vendors publish the window number and never the
-   reliability curve; per-token pricing bills the unusable region too.
+   expiry dates (licensing deals up for renegotiation mid-2026) before it
+   ever ran out. The "running out of internet" debate is the decoy; the
+   action is in court dockets and contracts nobody keynotes.
+3. **Effective-context collapse** — the industry measures context by
+   window size while the operative quantity is how much reasoning survives
+   as the window fills (RULER, NoLiMa). Vendors publish the window number,
+   never the utilization curve; per-token pricing bills the unusable
+   region too.
+
+Each bottleneck in `analysis.md` answers the same four questions
+explicitly: what is it · why does it exist · why does it get worse at
+scale · why would a major AI company have an incentive not to emphasize
+it (labeled as our interpretation).
 
 ## Files
 

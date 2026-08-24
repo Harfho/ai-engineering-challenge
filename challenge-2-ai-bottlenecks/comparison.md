@@ -1,6 +1,6 @@
 # Comparison — Which bottleneck matters most
 
-| Dimension | 1 · Model churn | 2 · Rights wall | 3 · Effective-context collapse |
+| Dimension | 1 · Rented cognition (dependency asymmetry) | 2 · Rights wall | 3 · Effective-context collapse |
 |---|---|---|---|
 | Who pays today | every team in production (revalidation tax: ~2–5 eng-days per model update [S4]) | labs (deals + settlements) and, downstream, customers via pricing | anyone stuffing context (3–6× token spend vs retrieval [S14]) |
 | Evidence quality | primary vendor logs [S1–S3] | court records + SEC filings [S7–S9] | peer-reviewed benchmarks [S11–S13] |
@@ -10,9 +10,10 @@
 
 ## Ranking by leverage
 
-**1st — Model churn.** Highest evidence certainty (vendor's own pages),
-broadest blast radius (every production team), and the cheapest fix that
-nobody ships (a machine-readable feed). The gap between how cheap the fix
+**1st — Rented cognition.** Highest evidence certainty (the vendors' own
+policy pages), broadest blast radius (every production team, every
+procurement negotiation), and the cheapest unshipped fix in the industry
+(a machine-readable deprecation feed). The gap between how cheap the fix
 is and how absent it remains is itself evidence of the incentive.
 
 **2nd — Rights wall.** Largest absolute stakes ($1.5B settlement as one
@@ -27,11 +28,14 @@ measure effective context on your own tasks before trusting any spec sheet.
 
 ## How they compound
 
-Churn forces re-measurement on the vendor's schedule; context collapse
-makes each re-measurement expensive (curves, not numbers); and the rights
-wall shapes what future models can learn, pushing vendors toward
-proprietary data flywheels that raise switching costs — locking customers
-into the churn. One ecosystem, three tax lines.
+Rented cognition is the umbrella: vendors control lifecycle, pricing, and
+serving behavior unilaterally. The rights wall shapes what those few
+controllers can train on, pushing them toward proprietary flywheels that
+raise switching costs — deepening the dependence. Context collapse
+shapes how much of what customers pay for actually reasons, and since
+serving behavior is vendor-controlled, buyers often can't even measure
+it without building the tooling themselves. One ecosystem, three tax
+lines, one payer: the independent builder.
 
 Ranking orders them by *leverage*, not severity. Full reasoning per
 bottleneck in [`analysis.md`](analysis.md).

@@ -1,226 +1,241 @@
 # Analysis — Three AI Development Bottlenecks Nobody Keynotes
 
-> STATUS: v2 (supersedes `archive/v1-first-pass/`). The first pass picked real
-> problems but ones that fail the brief's actual test: benchmark saturation,
-> the "data wall" and inference costs are all keynote material — you find
-> them on page one of any search. The brief asks for bottlenecks that exist
-> *because* nobody wants them discussed. So v2 applies a stricter selection
-> filter, stated up front, and keeps the same evidence discipline: every
-> factual claim sourced, every incentive argument labeled as interpretation.
+> STATUS: v3 (supersedes `archive/v1-first-pass/`). v2 fixed the source
+> selection after review; v3 fixes the argument structure. Every bottleneck
+> below answers the same four questions explicitly: What is the bottleneck?
+> Why does it exist? Why does it get worse at scale? Why would a major AI
+> company have an incentive NOT to emphasize it? Facts are sourced;
+> incentive arguments are labeled as our interpretation, offered as
+> analysis rather than fact.
 
 ## The selection filter
 
-A bottleneck belongs on this list only if it passes all three:
+A bottleneck belongs here only if all three hold:
 
-1. **Structural, not a tooling gap.** More engineers or money don't fix it.
-2. **Silence is profitable.** Discussing it honestly costs the big labs
-   revenue, narrative, or legal position — which explains the silence.
-3. **The keynote test.** Imagine an OpenAI or Google executive saying it
-   plainly in a keynote. If that sentence is unthinkable, it belongs here.
+1. **Structural, not a tooling gap** — more engineers or money don't fix it.
+2. **Silence is profitable** — honest discussion costs the big labs revenue,
+   narrative, or legal position.
+3. **The keynote test** — an executive saying it plainly on stage is
+   unthinkable.
 
 Three survivors:
 
-1. **Model churn: AI infrastructure with no stability guarantees**
+1. **Rented cognition: the dependency and control asymmetry under
+   independent AI products**
 2. **The rights wall: usable training data got priced and given expiry
    dates before it ever ran out**
-3. **Effective-context collapse: the advertised window is not a working
-   memory**
+3. **Effective-context collapse: the industry markets window size while
+   the operative quantity is how much reasoning survives as the window
+   fills**
 
 ---
 
-# Bottleneck 1 — Model churn (infrastructure without an LTS)
+# Bottleneck 1 — Rented cognition
 
-**What it is.** Enterprises are told to treat frontier models like
-infrastructure — the new cloud, the new database. But no vendor offers what
-infrastructure vendors offer: long-term support. Models get deprecated in
-60-day windows, APIs that entire products were built on get retired within
-a year of launch, and even model *parameters* break silently.
+### What is the bottleneck?
 
-**Evidence it exists (all verifiable, none of it secret).**
+Independent AI products do not run on infrastructure they own or even
+meaningfully influence. They run on rented cognition: a small number of
+vendors unilaterally control the models, interfaces, pricing, lifecycle,
+and even the serving behavior of the systems those products depend on.
+Model deprecation is merely the loudest symptom. The structure underneath
+is a dependency and control asymmetry: the vendor can change anything —
+what the product costs, how it behaves, whether it exists — and the
+customer's recourse is limited to migrating onto another vendor's equally
+rented stack.
 
-- OpenAI's own deprecation log [S1] shows a rolling series of 2026 sunsets:
-  the Assistants API retired Aug 26, 2026, one year after launch notice;
-  the Evals platform was deprecated June 3, 2026; Agent Builder deprecated
-  the same day; the Sora API exits Sept 24, 2026 *with no successor model
-  listed*. The GPT-4o family went from announcement to full removal from
-  ChatGPT in about two weeks (Jan 29 – Feb 13, 2026) [S2].
-- Anthropic's written policy promises a 60-day minimum runway; its own
-  published dates deliver exactly 60–62 days (claude-3-haiku: Feb 19 to
-  Apr 20, 2026) [S2, S3]. A 60-day migration window for a system that took
-  months to integrate is a forced march, not support.
-- Breaking changes reach below the model level: on Claude Opus 4.7 and
-  later, setting `temperature`, `top_p` or `top_k` to a non-default value
-  returns a 400 error [S2]. A parameter your code sets can be deprecated.
-- Resellers set their own clocks: Anthropic states its dates do not apply
-  to Bedrock or Vertex deployments, so one integration can carry three
-  different retirement schedules [S2].
-- No vendor publishes a machine-readable deprecation feed; tracking is
-  manual polling of changelog pages [S2].
-- The cost lands on customers: regression-testing a prompt library of
-  40–200 prompts against each new model version takes 2–5 engineer-days,
-  roughly $5k–25k per quarter at consulting rates [S4]. And deprecation is
-  only the loud case — silent snapshot updates change output behavior with
-  no version bump at all, which has broken production prompts at "every
-  team that's been in production long enough" [S5].
+The asymmetry has five faces:
 
-**Why it's structural.** Iteration speed *is* the moat. A lab that commits
-to 24-month LTS freezes its ability to ship improvements, retrain, or kill
-money-losing models. Stability and iteration speed are in direct tension,
-and every frontier lab has chosen speed. This is why the fix never comes
-from the vendors themselves.
+- **Weights**: closed, never transferable; the customer's prompts and
+  fine-tunes adapt to a model they cannot inspect or keep.
+- **Interface**: APIs and SDKs are vendor-defined and versioned by the
+  vendor; OpenAI retired the Assistants API within a year of its launch
+  notice [S1].
+- **Lifecycle**: deprecation clocks run 60–62 days at Anthropic in practice
+  [S2, S3]; OpenAI removed the GPT-4o family from ChatGPT about two weeks
+  after announcement [S2]. Publishing the schedule makes the clock
+  transparent; it does not give the customer any control over it.
+- **Pricing**: unilaterally set, changed historically without negotiated
+  protection.
+- **Serving behavior**: silent snapshot updates alter outputs with no
+  version bump — the vendor changes the product *inside* the package the
+  customer already shipped [S5].
 
-**Counterargument and falsifier.** "Deprecations give months of notice and
-weights stay available; enterprises just need better pipeline hygiene."
-True as far as it goes, but it concedes the point: the customer absorbs a
-recurring tax (revalidation, contract tests, routing layers) because the
-vendor will not. Falsifier: if any major vendor ships a genuine LTS tier
-(18+ months behavior-stable, SLA-backed), this bottleneck starts dissolving.
-None has as of August 2026.
+### Why does it exist?
 
-**Why Big Players stay quiet — our incentive-based interpretation (analysis,
-not established fact).** The whole enterprise sales motion rests on "AI is
-the new infrastructure." Nobody buying infrastructure accepts 60-day
-deprecation cycles — database vendors promise years. Saying the quiet part
-("our models are more like fashion than like Postgres") invites customers to
-demand LTS contracts, which would cap iteration speed, and invites
-regulators to ask whether something sold as infrastructure should be
-regulated like it. There is also a telling detail: OpenAI deprecated its
-own Evals platform in June 2026 while marketing reliability to enterprises
-[S1] — admitting how fast even flagship-adjacent tooling dies undercuts the
-stability pitch. Silence is cheaper.
+Because capability concentrates. Frontier training runs cost more than
+almost any customer could ever amortize, so the market structurally
+separates into a handful of producers and millions of dependents. Nothing
+about software practice caused this — it is the capital intensity of the
+technology. The asymmetry is the natural market shape of this industry,
+and standard software-era remedies (open source, self-hosting, multi-cloud
+portability) barely exist at the frontier: open weights trail by a
+generation, and "portability" means re-prompting and re-validating
+everything on someone else's stack.
 
-**What would actually help.** Machine-readable deprecation feeds (an RSS
-equivalent — trivially cheap, still absent); contractual behavior-stability
-windows priced as a premium tier; industry-standard "model semver" so
-breaking changes are machine-detectable. Customers are already building the
-workarounds (routing layers, contract tests, owned calendars [S2]) — the
-market is paying a private tax to patch a public gap.
+### Why does it get worse at scale?
+
+Dependence compounds faster than usage. A product that succeeds integrates
+deeper: prompt libraries tuned to one model's quirks, fine-tunes trained
+on its behavior, agent workflows chaining dozens of calls whose combined
+behavior no contract describes. Each layer multiplies the cost of any
+vendor-initiated change — a revalidation that costs days for a chatbot
+costs months for an agent platform. Meanwhile the producer side
+concentrates further: rising training costs shrink the set of credible
+vendors, so the customer's negotiating leverage falls precisely as its
+dependence rises. Scale buys you volume discounts and removes your exits
+at the same time.
+
+### Why would a major AI company have an incentive NOT to emphasize it?
+*(our incentive-based interpretation — analysis, not established fact)*
+
+Because the entire enterprise motion sells AI *as* infrastructure, and
+infrastructure buyers expect infrastructure obligations: stability
+windows, price protection, exit paths. Naming the asymmetry honestly —
+"you are dependent on us in ways no contract fully covers, and we intend
+to keep changing things" — does three kinds of damage at once. It invites
+customers to demand LTS contracts and SLAs, capping the iteration speed
+that is the lab's actual moat. It invites regulators to ask whether
+something load-bearing for thousands of companies should carry
+utility-style obligations. And it arms every procurement department with
+the vocabulary to demand concessions. There is also a quieter lever worth
+naming carefully as interpretation: forced migration herds users onto
+newer models on the vendor's schedule, and depreciation of the old stack
+is effectively a monetization tool — which is why even trivially cheap
+fixes (machine-readable deprecation feeds) remain unshipped years into the
+API era [S2].
+
+**Counterargument and falsifier.** "Policies are public, notice periods
+exist, weights are preserved — the market works." That addresses the
+symptom's politeness, not the structure's asymmetry: a transparent clock
+is still a clock you don't control. Anthropic's commitment to preserve
+weights [S3] is the tell — the escape hatch exists only for those who can
+run models themselves, i.e., not the dependent customers this bottleneck
+is about. Falsifier: genuine LTS tiers with behavior-stability SLAs, or a
+real portability standard, would dissolve the asymmetry. None exists as of
+August 2026.
 
 ---
 
 # Bottleneck 2 — The rights wall arrived before the volume wall
 
-**What it is.** The public debate is about running out of internet — token
-counts, 300T estimates, synthetic data. That debate is a decoy. The binding
-constraint moved in 2024–2025 from *volume* to *rights*: text that cannot
-legally be used might as well not exist, and the courts and the market have
-started attaching prices and expiry dates to what was previously free to
-crawl.
+### What is the bottleneck?
 
-**Evidence it exists.**
+The public debate counts tokens — how much internet remains to train on.
+That debate is the decoy. The operative constraint is legal usability:
+text that cannot lawfully be used might as well not exist. Between late
+2023 and late 2025, usable training data acquired two properties it never
+had before — a price per work and an expiration date — and both were set
+by courts and platforms, not by labs.
 
-- Anthropic's copyright class action settled in September 2025 for a
-  reported $1.5B — the largest copyright recovery in history — establishing
-  a de facto baseline of roughly $3,000 per work that now functions as a
-  reference price across the whole market [S6, S7].
-- Data access became recurring opex with expiration dates, not a one-time
-  crawl: Reddit licenses to Google (~$60M/yr) and OpenAI (~$70M/yr) — about
-  $130M/yr, ~10% of Reddit's total revenue per its SEC filings [S8] — and
-  by mid-2026 those deals were up for renegotiation with Reddit publicly
-  weighing *blocking* Google's access entirely [S10].
-- The same content carries two simultaneous prices: Reddit sued Anthropic
-  in June 2025 alleging 100,000+ unauthorized scrapes while cashing checks
-  from Google and OpenAI [S9]. Getty won judgment in its UK case in Nov
-  2025; NYT v. OpenAI remains active [S7].
-- Deal volume went from 12 disclosed licensing deals in 2023 to a projected
-  ~127 by mid-2026, with roughly $2B in disclosed value led by News
-  Corp–OpenAI ($250M over five years) and News Corp–Meta (up to $50M/yr)
-  [S6, S7].
+### Why does it exist?
 
-**Why it's structural.** Unlike the volume wall, this constraint *tightens*
-over time regardless of technical progress: every court decision raises the
-price floor, every expiring deal is repriced upward, and opt-outs compound.
-Compute scales with capital; rights scale with litigation, and litigation
-has no Moore's law.
+Because the default flipped. For a decade the working assumption was
+*crawlable equals usable*. A wave of litigation (NYT v. OpenAI, Getty's UK
+judgment, Authors Guild cases) and one landmark settlement moved the
+default: Anthropic's September 2025 copyright resolution, reported at
+$1.5B, established a de facto reference price near $3,000 per work that
+now anchors negotiations across the market [S6, S7]. Simultaneously,
+platforms that aggregate user-generated content discovered they are toll
+booths: Reddit licenses the same corpus to Google (~$60M/yr) and OpenAI
+(~$70M/yr) — roughly $130M/yr, about 10% of Reddit's revenue per its SEC
+filings [S8] — while suing Anthropic over the identical content [S9].
+Deal volume grew from 12 disclosed agreements in 2023 to a projected ~127
+by mid-2026, roughly $2B disclosed [S6, S7].
 
-**Counterargument and falsifier.** "Licensing deals prove the market works;
-content flows to whoever pays." That is true for the top ~100 publishers —
-and irrelevant for the long tail that made web-scale training possible.
-Nobody can sign 100M individual authors. The settlement price floor makes
-the tail *more* litigable, not less. Falsifier: if a functioning collective-
-licensing mechanism emerged (a BMI for text) that cleared most rights
-cheaply, the wall would come down. As of August 2026 nothing resembling it
-exists.
+### Why does it get worse at scale?
 
-**Why Big Players stay quiet — our incentive-based interpretation (analysis,
-not established fact).** Three silences stack here. Admitting that usable
-supply is priced-per-work and expiring kills the scale narrative ("we'll
-just train on more") that drives valuation. Naming the $3k/work floor out
-loud invites every rights-holder on earth to demand it. And conceding that
-past training may have been infringing has direct legal exposure — which is
-why public statements stay frozen on "efficiency and synthetic data" while
-the real action happens in court dockets and contract negotiations nobody
-keynotes. The one thing no frontier lab will say: the scarce resource of
-this decade is not compute or tokens. It is *cleared* text.
+Every scaling pressure pushes the wrong way. Larger models need *more*
+high-quality human text exactly as enforcement strengthens. Bigger labs
+are richer lawsuit targets, so legal exposure grows with success. Each
+settled case and signed deal raises the comparable that rights-holders
+cite next — the price floor ratchets upward automatically. And the
+market-based escape, synthetic data, fails hardest at the frontier: the
+most capable models are the ones most sensitive to training on their own
+output. The constraint tightens fastest for whoever is scaling hardest.
 
-**What would actually help.** Collective licensing with blanket rights
-(the music-industry model); provenance metadata standards so consent is
-machine-checkable at crawl time; revenue-share arrangements tied to
-inference rather than one-time training fees. All three exist as proposals;
-none exists as infrastructure, because building it means admitting the wall
-is real.
+### Why would a major AI company have an incentive NOT to emphasize it?
+*(our incentive-based interpretation — analysis, not established fact)*
+
+Three silences stack. First, valuation: the growth story is "scale solves
+everything," and admitting that the input to scale is priced-per-work and
+expiring breaks the compounding math investors are buying. Second,
+pricing power: saying "$3,000 per work is now the floor" out loud invites
+every author, publisher, and platform on earth to demand exactly that.
+Third, legal exposure: engaging with the topic concedes that past training
+runs are contestable — which is why public communication stays frozen on
+"efficiency and synthetic data" while the decisive action happens in court
+dockets and private contracts nobody keynotes. The unsayable sentence:
+*the scarce resource of this decade is cleared text.*
+
+**Counterargument and falsifier.** "Licensing deals prove the market
+works." They prove it works for perhaps the top hundred publishers. The
+long tail — the millions of sites and authors who made web-scale corpora
+possible — cannot be individually contracted, and the new price floor
+makes suing the tail more attractive, not less. Falsifier: a functioning
+collective-licensing clearinghouse (a BMI for text) that clears most
+rights cheaply would tear this wall down. As of August 2026 nothing
+resembling one exists.
 
 ---
 
 # Bottleneck 3 — Effective-context collapse
 
-**What it is.** Context window size became the spec-sheet arms race of
-2024–2026: 128K, 200K, 400K, a million tokens, printed on every model card.
-Measured reality: the fraction of that window over which a model *reasons
-reliably* is far smaller, task-dependent, and almost never published. You
-pay per token for the whole window; you get reliable recall from a slice
-of it.
+### What is the bottleneck?
 
-**Evidence it exists.**
+The industry measures context capability using the size of the window,
+while the economically and technically relevant quantity is how much
+useful reasoning and retrieval survives as the window fills. Those two
+quantities diverge enormously. The distinction matters because "1M
+context" is a compelling product metric; admitting that effective
+utilization is substantially lower weakens that narrative — so the
+utilization curve is measured in academia and omitted from model cards.
 
-- RULER (NVIDIA, COLM 2024) evaluated 17 models claiming ≥32K contexts:
-  only four sustained satisfactory performance even at 32K. Claimed vs
-  effective: LWM 1M → under 4K; Yi-34B 200K → 32K; GPT-4 128K → 64K;
-  Command-R 128K → 32K [S11].
-- NoLiMa (LMU Munich + Adobe Research, 2025) removed the lexical overlap
-  that lets models cheat needle-tests: effective lengths collapsed to
-  ≤2K–8K tokens for most models claiming 128K+ — Llama 3.3 70B fell from a
-  claimed 128K to ~8K effective [S12].
-- The shape problem predates both: "Lost in the Middle" (Liu et al., 2023)
-  showed recall depends strongly on *where* information sits, not just how
-  much there is [S13]. Follow-up work in 2026 found information density
-  collapses effective context earlier than length alone predicts [S14].
-- Practitioner synthesis puts it bluntly: retrieval feeds the model 17–38%
-  of the tokens a full-window approach consumes, and at volume the cost
-  difference reaches orders of magnitude — which is why RAG refuses to die
-  despite every "RAG is dead, long context killed it" headline [S14].
+### Why does it exist?
 
-**Why it's structural.** Attention over a window is not memory over a
-window. Making a million tokens *reliably* useful requires architectural
-changes whose costs (attention compute, training data with genuinely
-long-range dependencies, evaluation at length) all scale badly. Meanwhile
-the marketing benefit of a bigger number is instant and free.
+Attention over a window is not memory over a window. Architecturally,
+models lose grip on information as position and interference grow;
+training distributions contain few genuinely long-range supervision
+signals worth the name; and the benchmark that made window claims
+credible — needle-in-a-haystack — is beatable through lexical overlap,
+so it measures matching, not reasoning [S11–S13]. Remove the overlap
+(NoLiMa) and effective lengths collapse to ≤2K–8K tokens for most models
+claiming 128K+ [S12]. RULER found only four of seventeen models claiming
+≥32K sustained satisfactory performance even at 32K; LWM claimed 1M and
+delivered under 4K [S11].
 
-**Counterargument and falsifier.** "The window is honest — it's an input
-limit, and capability keeps improving; NoLiMa-style results reflect older
-models." Partly fair: newer models score better. But the claim being sold
-is the window, and no frontier lab publishes accuracy-versus-length curves
-for its own flagship next to the spec number. If the gap had closed, the
-curves would be marketing assets — their absence is the tell. Falsifier:
-vendors publishing reliability-vs-length curves as prominent as the window
-number would retire this bottleneck.
+### Why does it get worse at scale?
 
-**Why Big Players stay quiet — our incentive-based interpretation (analysis,
-not established fact).** Context length is the last spec-sheet number a
-buyer can compare without reading a benchmark methodology, so it carries
-enormous marketing leverage; publishing honest curves would reset every
-competitor comparison overnight and admit that RAG plumbing — unglamorous,
-unmonetized by the lab — is still required. There is also a pricing angle
-worth naming carefully as interpretation: per-token input pricing monetizes
-the region of the window beyond effective context. The unusable part of the
-window still bills.
+Two multipliers. First, workload shape: agentic systems accumulate
+context every step — history, tool outputs, retrieved chunks — so the
+gap between billed tokens and usefully-used tokens compounds per action,
+and agent economics inherit the tax multiplicatively. Second, billing
+structure: input tokens are priced uniformly, which means the region of
+the window beyond effective context is pure margin for the vendor and
+pure waste for the buyer. Practitioner measurements put retrieval-only
+approaches at 17–38% of full-window token consumption [S14] — the gap
+between those numbers and the spec sheet is the size of the problem.
 
-**What would actually help.** Publish effective-context curves per task
-family (retrieval / multi-hop / aggregation) beside every window spec;
-price by *effective* tokens or offer long-context tiers honestly; standard
-benchmarks (RULER-class) run at release and reported in model cards. The
-research community already built the measurement tools — adoption is the
-missing piece, and adoption is exactly what the incentives resist.
+### Why would a major AI company have an incentive NOT to emphasize it?
+*(our incentive-based interpretation — analysis, not established fact)*
+
+Window size is the last specification a buyer can compare without reading
+benchmark methodology, which makes it disproportionately valuable
+marketing real estate. Publishing honest accuracy-versus-length curves
+would reset every competitor comparison overnight, concede that RAG
+plumbing — which the lab does not sell — remains mandatory, and draw
+attention to the fact that per-token pricing bills the portion of the
+window the model cannot reliably use. The research community built the
+measurement tools years ago; adoption on model cards is the missing
+piece, and adoption is precisely what the incentives resist.
+
+**Counterargument and falsifier.** "Capability improves every generation,
+and NoLiMa reflects older models." Fair, and beside the point: the claim
+being sold is the window, and the curves that would substantiate it are
+never published next to it. If the gap had truly closed, those curves
+would be marketing assets — their absence is the tell. Falsifier: vendors
+publishing reliability-vs-length curves as prominently as the window
+number retires this bottleneck.
 
 ---
 
@@ -228,23 +243,24 @@ missing piece, and adoption is exactly what the incentives resist.
 
 | Famous bottleneck | Why it fails the brief's test |
 |---|---|
-| Benchmark saturation | Keynoted constantly ("evals crisis" panels at every major conference); labs fund eval teams publicly |
-| Training-data exhaustion (token counts) | Epoch-style estimates are among the most-cited AI articles on the internet |
-| Inference economics / GPU costs | Earnings-call staple; CFOs discuss it openly |
+| Benchmark saturation | keynoted constantly; labs fund eval teams publicly |
+| Training-data exhaustion (token counts) | among the most-cited articles on the internet |
+| Inference economics / GPU costs | earnings-call staple |
 
-Each of our three inverts that: the facts sit in changelogs, court dockets,
-and appendix tables — places a buyer might look but a keynote never goes.
-That placement is not accidental, and connecting the placement to the
-incentives is our interpretation, offered as analysis rather than fact.
+Each of ours inverts that placement: the facts live in changelogs, court
+records, SEC filings, and appendix tables — places a buyer might look but
+a keynote never goes. That placement is not accidental; connecting it to
+incentives is our labeled interpretation.
 
 ## How the three interlock
 
-They compound on the same victim: the team trying to build on top.
-Model churn (1) forces constant revalidation; effective-context collapse
-(3) means the revalidation must measure curves, not single numbers; the
-rights wall (2) shapes what the next generation of models can even learn,
-pushing vendors toward proprietary data flywheels — which further locks in
-churn because switching providers means abandoning the flywheel you fed.
+Rented cognition is the umbrella. The rights wall (2) determines what the
+few controllers can train on, pushing them toward proprietary flywheels
+that deepen dependence. Effective-context collapse (3) determines how
+much of what customers pay for actually reasons — and since the vendor
+controls serving behavior, the customer often cannot measure it except by
+building the measurement infrastructure themselves. All three taxes land
+on the same party: the independent builder.
 
 Full source list with quality tiers: [`sources.md`](sources.md).
-Head-to-head ranking: [`comparison.md`](comparison.md).
+Leverage ranking: [`comparison.md`](comparison.md).
