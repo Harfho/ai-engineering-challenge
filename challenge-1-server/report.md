@@ -73,14 +73,33 @@ generators whose raw outputs are retained verbatim.
    anywhere → stateful DROP behavior, i.e., deliberate firewalling rather
    than "nothing listening" (which would RST on most stacks).
 4. **Service identification (stage 4).** Port 22 answered immediately with
-   `SSH-2.0-OpenSSH_10.0p2`.
+   `SSH-2.0-OpenSSH_10.0p2`. Deeper KEXINIT probing shows stock OpenSSH 10
+   algorithm defaults (post-quantum `mlkem768x25519` offered first) — an
+   uncustomized, honestly-bannered daemon.
 5. **Artifact reconciliation (stage 5).** The owner's saved online-scanner
    pages contained no persisted results (verified by exhaustive IP-string
    search across every HTML file); the IPinfo artifact did corroborate
    registry data and added two useful facts: 119 pingable IPs across the
    /24, and a successful ICMP measurement from Bucharest to `.219`
-   (2026-08-20). Combined with our successful international SSH handshake,
-   this shows selective per-port policy, not geo-blocking of our vantage.
+   (2026-08-20).
+6. **Cross-vantage closure + purpose analysis (stage 6).** Shodan's passive
+   InternetDB independently confirms our active scan exactly: ports=[22],
+   OpenSSH 10.0p2, zero flagged CVEs, and — critically — **no hostname in
+   its history for .222** (nor neighbors sampled). Neighbor characterization:
+   `.219` is a Debian SSH box; `.220` serves something on 3001/tcp. Full
+   inference chain: `reconnaissance/04-purpose-analysis.md`.
+
+### Determining the server's purpose (brief requirement)
+
+The evidence triangulates to: **a private remote-administration endpoint**
+(jump-host / headless management box), not a public-facing service server.
+Chain: single listener = current sshd → admin access by design; silent DROPs
+elsewhere → deliberate policy; no PTR/hostname/web/TLS anywhere in registry,
+DNS, Shodan history, or active scans → built *not* to be found; neighbors
+show the block mixes hardened SSH boxes with real app servers (.220:3001) →
+this slice hosts personal/small-team infrastructure at FlokiNET (Icelandic
+privacy-focused hoster). Confidence MEDIUM-HIGH; falsifier would be any
+trace of intended public service — none exists.
 
 ## 5. Attack surface
 
@@ -90,7 +109,9 @@ generators whose raw outputs are retained verbatim.
 | — | (none) | 1–65535 excl. 22 | — | n/a | Filtered/DROP, no RST |
 | — | ICMP | n/a | n/a | Medium (third-party artifact only; not probed directly) | Block reported pingable (119 IPs) |
 
-UDP surface unassessed (see §10).
+UDP surface unassessed (see §10). Cross-vantage corroboration (Shodan
+InternetDB): ports=[22] only, OpenSSH 10.0p2, vulns=[], hostnames=[] —
+full agreement with our active scan (`reconnaissance/04-purpose-analysis.md`).
 
 ## 6. Findings
 
@@ -134,6 +155,7 @@ rather than omitted: a report that lists only problems overstates risk.
 | OpenSSH_10.0p2 banner | `03-portscan-ssh-banner.md` stage 3 |
 | Block not blackholed (ICMP) | IPinfo HTML artifact (`Documents/AI/`) quoted in `03-...md` |
 | Online-scanner artifacts contain no results | audit method + result table in `03-...md` cross-vantage section |
+| Purpose determination + Shodan corroboration | `04-purpose-analysis.md` (InternetDB JSON excerpts, neighbor data, KEXINIT probe) |
 
 ## 9. Remediation recommendations
 
@@ -156,9 +178,11 @@ Priority order:
 - **No exploitation, no credentialed access:** findings reflect external
   reconnaissance only; sshd configuration (key-only? root login?) and host
   internals unverified.
-- **Single vantage point:** one source IP performed all probing;
-  source-selective firewall rules cannot be detected from here. Mitigated
-  partly by third-party ICMP evidence.
+- **Single vantage point:** ~~one source IP performed all probing;~~
+  **resolved post-scan** — Shodan InternetDB's global sensor history agrees
+  exactly (22 only, same version, no CVEs). Residual: Shodan is passive and
+  periodic, so a briefly-lived service between its sweeps could evade both
+  methods.
 - **UDP unscanned:** connect-scanning does not observe UDP; deferred given
   total TCP filtering made broader exposure unlikely.
 - **Tooling constraint:** nmap unavailable (no sudo in agent shell);

@@ -91,6 +91,26 @@ afterthought [A4]. (4) Institutional-memory systems that make past verified
 outcomes queryable at decision time (the Challenge 3 prototype is a minimal
 instance).
 
+**Why no Big Player emphasizes this (incentive analysis).**
+Frontier labs' marketing is built on benchmark wins; admitting that
+benchmarks stop measuring anything within months undermines the very
+numbers in their launch posts [A1, A2]. Cloud/API vendors monetize
+capability demos, not reliability certificates — evaluation produces no
+invoiceable unit, so it is structurally under-funded relative to training
+runs [A4]. And no lab benefits from third parties gaining the tools to
+independently verify contested claims: developer-reported numbers already
+diverge from independent replications [A1]. The silence isn't coordinated;
+it's convergent incentives.
+
+**What we think would actually improve it (our assessment).** Treat evals
+like CI: continuous, domain-embedded, versioned against production traffic,
+with published uncertainty bounds — plus standardized "reliability
+reporting" analogous to SLOs (failure rate at stated confidence), so
+procurement can compare models on measured risk instead of saturated
+leaderboard deltas. Regulation will eventually demand exactly this for
+high-stakes deployment; whoever builds the practice first defines the audit
+standard.
+
 **Limitations & counterarguments.** See "Counterarguments" section.
 
 ---
@@ -148,6 +168,25 @@ data-efficient training (distillation, curriculum); retrieval-augmented
 systems that externalize knowledge instead of parameterizing all of it;
 institutional investment in proprietary data flywheels (user interactions →
 curated corpus).
+
+**Why no Big Player emphasizes this (incentive analysis).** Data strategy
+is the core of every frontier lab's moat; disclosing how close the public
+corpus is to exhaustion — or how much of it you have already consumed —
+hands competitors a map of your remaining runway and tells rights-holders
+exactly when their pricing leverage peaks [B1, B3]. Meanwhile "we're running
+out of internet" is a terrible pitch to regulators weighing data-licensing
+rules and to courts deciding fair-use cases. Better to speak of efficiency
+and synthetic data. The one lab figure who addressed it publicly did so with
+a reassuring probability, not a plan.
+
+**What we think would actually improve it (our assessment).** The durable
+answer is *verified-generation flywheels*: systems that turn user
+interactions into curated, permissioned training corpora (with consent and
+provenance metadata baked in), plus verification-gated synthetic pipelines —
+both shift the constraint from "scrape faster" to "verify better", which
+conveniently is Bottleneck 1's tooling. Data-efficient architectures and
+retrieval-externalized knowledge reduce demand at the margin but won't
+remove the wall.
 
 **Limitations & counterarguments.** See "Counterarguments" section.
 
@@ -208,6 +247,26 @@ internal router validates the pattern); semantic caching and plan-reuse
 memory; token-budget observability (FinOps for AI); distillation of big-model
 behavior into cheap executors; designing agents to *retrieve before they
 reason*.
+
+**Why no Big Player emphasizes this (incentive analysis).** Every provider's
+revenue story assumes inference demand keeps compounding; publishing unit
+economics that show negative gross margin at frontier scale [C4] invites
+both customer price pressure and investor questions about when the flywheel
+stops. Enterprise vendors bury serving costs inside subscription pricing
+because itemized token bills kill adoption momentum [C2]. And nobody selling
+agents wants the words "your margin inverts at ~500 users" [C3] anywhere
+near their pitch decks — the cost crisis is discussed in FinOps blogs, not
+keynotes.
+
+**What we think would actually improve it (our assessment).** Three levers,
+in impact order: (1) *retrieve-before-reason* architectures — memory/caching
+layers that answer from prior verified work instead of re-deriving tokens
+(the measured 3–10× wins already beat most model swaps [C1]); (2) routed
+heterogeneous fleets — cheap executors for the common path, deep reasoning
+only on hard slices, with token budgets enforced as first-class SLOs;
+(3) distillation loops turning expensive reasoning traces into cheap
+executors. All three are engineering disciplines, not research bets — which
+is exactly why they're under-discussed: they don't sell new models.
 
 **Limitations & counterarguments.** See "Counterarguments" section.
 
