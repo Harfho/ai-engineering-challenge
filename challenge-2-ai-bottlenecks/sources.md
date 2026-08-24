@@ -96,7 +96,7 @@ structures* the documents establish.
 |---|---|---|
 | Primary (policy/paper/court) | S1, S3, S11, S12, S13 | facts cited as stated |
 | Aggregator/news (reported figures) | S6, S7, S8, S9, S10 | labeled "reported"; direction yes, precision no |
-| Practitioner (single-source costs) | S2*, S4, S5, S14 | order-of-magnitude only |
+| Practitioner (single-source costs) | S2*, S4, S5, S14, S15 | order-of-magnitude / timeline only |
 
 *S2 sits between tiers: trade write-up but computed strictly from primary
 vendor pages; we spot-checked its Anthropic window arithmetic against S3.
