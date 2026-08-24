@@ -2,7 +2,7 @@
 
 **Target:** `185.146.233.222`
 **Authorization:** Assessment owner states the target belongs to them and grants full operational freedom (see `docs/methodology.md` assumption log).
-**Status:** Not started — Phase 2 begins on instruction.
+**Status:** COMPLETE — see [`ANSWERS.md`](ANSWERS.md) for direct answers to the brief's five questions; full report in [`report.md`](report.md).
 
 ## Plan
 
