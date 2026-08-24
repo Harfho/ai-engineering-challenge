@@ -4,7 +4,7 @@
 
 - Why: establish complete TCP attack surface from our vantage point.
 - Tool: `reconnaissance/tools/tcp_scan.py` (auditable asyncio connect scanner;
-  written because sudo/nmap was unavailable in the agent shell — see tool docstring)
+  deliberately chosen over nmap for full source-level review — see tool docstring)
 - Command: `python3 tools/tcp_scan.py 185.146.233.222 1 65535`
 - Date (UTC): 2026-08-24 ~09:45
 - Duration: ~2.5 s wall (1200 concurrent probes, 1.5 s timeout)

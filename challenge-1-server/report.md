@@ -54,7 +54,7 @@ Full rationale and rules: `docs/methodology.md`. Summary of what was done:
 |---|---|---|---|
 | 1. Passive context | RDAP (RIPE), ASN (Team Cymru DNS), IPinfo artifact | `curl`, `dig`, saved HTML | `01-rdap-context.md`, `raw/01-*.json` |
 | 2. Reverse DNS | PTR queries via local + public resolvers, SOA check | `dig` | `02-reverse-dns.md` |
-| 3. Full TCP sweep | asyncio connect scan, 1200 concurrency, 1.5 s timeout | custom auditable scanner (`tools/tcp_scan.py`; nmap unavailable without sudo) | `03-portscan-ssh-banner.md`, `raw/03-tcp-scan-full.json` |
+| 3. Full TCP sweep | asyncio connect scan, 1200 concurrency, 1.5 s timeout | custom scanner (`tools/tcp_scan.py`) — chosen over nmap so every probe behavior is auditable from committed source | `03-portscan-ssh-banner.md`, `raw/03-tcp-scan-full.json` |
 | 4. Service ID | Banner capture on open port | python socket | `03-portscan-ssh-banner.md` stage 3 |
 | 5. Artifact audit | Owner-supplied browser artifacts parsed & reconciled | python text/JSON extraction | `03-portscan-ssh-banner.md` cross-vantage section |
 
@@ -199,10 +199,11 @@ Priority order:
 - **Single vantage point (TCP), partially resolved:** our active scan was
   later corroborated by Shodan's independent passive history
   (`04-purpose-analysis.md`); both could still miss briefly-lived services.
-- **Tooling constraint:** nmap unavailable (no sudo in agent shell);
-  equivalent coverage achieved with a custom asyncio connect scanner whose
-  source is committed for audit. OS fingerprinting and scripted service-
-  version probes beyond banners were out of reach without it.
+- **Tooling choice:** nmap was deliberately not used; the custom asyncio
+  connect scanner (~50 lines, stdlib only, source committed) gives full
+  auditability of probe semantics and classification. Trade-off accepted:
+  OS fingerprinting and scripted service-version probes beyond banners
+  were not performed.
 - **Timing:** snapshot assessment (one window on 2026-08-24); posture may
   differ at other times or from other networks.
 

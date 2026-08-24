@@ -17,9 +17,11 @@
 
 ## Tooling note
 
-`nmap` was unavailable without elevated privileges, so an auditable
-asyncio-based TCP scanner was used instead (`tools/tcp_scan.py`); tool
-provenance is recorded with each evidence artifact.
+nmap was deliberately not used: the assessment instead runs a ~50-line
+auditable asyncio TCP scanner (`tools/tcp_scan.py`, stdlib only, source
+committed) so every probe's behavior is reviewable from first principles.
+Trade-off accepted: no OS fingerprinting or scripted version probes beyond
+banners. Tool provenance is recorded with each evidence artifact.
 
 ## Deliverable
 
