@@ -1,335 +1,250 @@
-# Analysis — Three Under-Emphasized AI Development Bottlenecks
+# Analysis — Three AI Development Bottlenecks Nobody Keynotes
 
-> STATUS: final. Selection rationale, evidence chains, and counterarguments
-> below. Full source list with quality tiers in `sources.md`; comparative
-> ranking in `comparison.md`.
+> STATUS: v2 (supersedes `archive/v1-first-pass/`). The first pass picked real
+> problems but ones that fail the brief's actual test: benchmark saturation,
+> the "data wall" and inference costs are all keynote material — you find
+> them on page one of any search. The brief asks for bottlenecks that exist
+> *because* nobody wants them discussed. So v2 applies a stricter selection
+> filter, stated up front, and keeps the same evidence discipline: every
+> factual claim sourced, every incentive argument labeled as interpretation.
 
-## Executive summary
+## The selection filter
 
-Public AI discourse concentrates on pre-training scale and benchmark
-breakthroughs. We argue the binding constraints on real-world AI progress
-lie elsewhere. Three bottlenecks are simultaneously (a) under-emphasized
-relative to their impact and (b) structurally hard — not solvable by simply
-training larger models:
+A bottleneck belongs on this list only if it passes all three:
 
-1. **The evaluation & verification bottleneck** — the ability to measure,
-   verify, and trust AI model behavior is falling behind model capability.
-   Benchmarks saturate faster than they can be replaced; headline
-   accuracy no longer predicts deployment reliability; enterprises cannot
-   demonstrate value, so adoption stalls.
-2. **High-quality training data exhaustion** — the stock of human-written
-   public text that scaling depends on is finite (roughly 300T effective
-   tokens) and is being used up at an accelerating rate. The wall arrives
-   sometime in 2026–2032, and overtraining driven by inference economics
-   pulls that date closer.
-3. **Inference economics** — the cost center of AI has flipped from training
-   to serving. Agentic workloads multiply token consumption non-linearly;
-   per-token prices fall while total bills rise; unit economics of agent
-   products invert before product-market fit is proven.
+1. **Structural, not a tooling gap.** More engineers or money don't fix it.
+2. **Silence is profitable.** Discussing it honestly costs the big labs
+   revenue, narrative, or legal position — which explains the silence.
+3. **The keynote test.** Imagine an OpenAI or Google executive saying it
+   plainly in a keynote. If that sentence is unthinkable, it belongs here.
 
-These three feed each other. Data exhaustion makes every token worth more
-(which is the inference-economics problem), and unreliable evaluation means
-nobody can tell whether expensive tokens actually bought anything (which is
-the evaluation problem). The reminder system prototype in Challenge 3 is our
-answer to bottleneck 1's practical side: putting verified institutional
-memory in front of an agent at the moment it acts.
+Three survivors:
+
+1. **Model churn: AI infrastructure with no stability guarantees**
+2. **The rights wall: usable training data got priced and given expiry
+   dates before it ever ran out**
+3. **Effective-context collapse: the advertised window is not a working
+   memory**
 
 ---
 
-## Bottleneck 1 — The evaluation & verification gap
+# Bottleneck 1 — Model churn (infrastructure without an LTS)
 
-**Definition.** The widening mismatch between what models can do and what
-anyone can reliably measure, predict, or certify about what they will do —
-spanning benchmark saturation, statistical floors on reliability
-measurement, and the absence of deployment-relevant evaluation.
+**What it is.** Enterprises are told to treat frontier models like
+infrastructure — the new cloud, the new database. But no vendor offers what
+infrastructure vendors offer: long-term support. Models get deprecated in
+60-day windows, APIs that entire products were built on get retired within
+a year of launch, and even model *parameters* break silently.
 
-**Why it exists.** Benchmarks are static artifacts evaluated against moving
-targets. Once a benchmark's top-model score gaps shrink below measurement
-uncertainty, it stops differentiating [A5] — and a systematic study of 60
-LLM benchmarks found nearly half already saturated, with private test sets
-providing *no* protective effect [A2]. Capability grew ~an order of
-magnitude faster than evaluation infrastructure; evaluations "are being
-outpaced by the progress they were built to measure" [A1].
+**Evidence it exists (all verifiable, none of it secret).**
 
-**Technical/economic roots.**
-- *Statistical*: distinguishing 99.9% from 99.999% reliability requires
-  sample sizes that grow inversely with failure rate — Monte Carlo evals
-  hit a compute wall exactly where safety-critical applications need
-  precision [A3].
-- *Economic*: evaluation produces no revenue; capability demos do. Labs
-  rationally over-invest in capability relative to measurement.
-- *Incentive*: developer-reported results increasingly diverge from third-
-  party replications, and contamination undermines comparability [A1].
+- OpenAI's own deprecation log [S1] shows a rolling series of 2026 sunsets:
+  the Assistants API retired Aug 26, 2026, one year after launch notice;
+  the Evals platform was deprecated June 3, 2026; Agent Builder deprecated
+  the same day; the Sora API exits Sept 24, 2026 *with no successor model
+  listed*. The GPT-4o family went from announcement to full removal from
+  ChatGPT in about two weeks (Jan 29 – Feb 13, 2026) [S2].
+- Anthropic's written policy promises a 60-day minimum runway; its own
+  published dates deliver exactly 60–62 days (claude-3-haiku: Feb 19 to
+  Apr 20, 2026) [S2, S3]. A 60-day migration window for a system that took
+  months to integrate is a forced march, not support.
+- Breaking changes reach below the model level: on Claude Opus 4.7 and
+  later, setting `temperature`, `top_p` or `top_k` to a non-default value
+  returns a 400 error [S2]. A parameter your code sets can be deprecated.
+- Resellers set their own clocks: Anthropic states its dates do not apply
+  to Bedrock or Vertex deployments, so one integration can carry three
+  different retirement schedules [S2].
+- No vendor publishes a machine-readable deprecation feed; tracking is
+  manual polling of changelog pages [S2].
+- The cost lands on customers: regression-testing a prompt library of
+  40–200 prompts against each new model version takes 2–5 engineer-days,
+  roughly $5k–25k per quarter at consulting rates [S4]. And deprecation is
+  only the loud case — silent snapshot updates change output behavior with
+  no version bump at all, which has broken production prompts at "every
+  team that's been in production long enough" [S5].
 
-**Why current approaches don't solve it.** Building harder benchmarks
-(Humanity's Last Exam etc.) restarts the saturation clock but doesn't fix
-the reliability-measurement floor or domain-transfer problem: scoring 90% on
-expert questions says little about judgment inside a specific law practice
-[A1, A4]. Private/hidden test sets don't help [A2]. LLM-as-judge inherits
-the very biases it should measure.
+**Why it's structural.** Iteration speed *is* the moat. A lab that commits
+to 24-month LTS freezes its ability to ship improvements, retrain, or kill
+money-losing models. Stability and iteration speed are in direct tension,
+and every frontier lab has chosen speed. This is why the fix never comes
+from the vendors themselves.
 
-**Why it matters going forward.** With frontier labs within ~25 Elo points
-of each other [A1], capability stops being the differentiator; cost,
-reliability, and verifiable fit become decisive. Agents that fail roughly
-one attempt in three [A1] cannot enter regulated workflows without
-certification machinery that does not yet exist. Evaluation is now the rate-
-limiter of *adoption*, not just of research: 97% of enterprises report
-struggling to show business value from GenAI initiatives [A4].
+**Counterargument and falsifier.** "Deprecations give months of notice and
+weights stay available; enterprises just need better pipeline hygiene."
+True as far as it goes, but it concedes the point: the customer absorbs a
+recurring tax (revalidation, contract tests, routing layers) because the
+vendor will not. Falsifier: if any major vendor ships a genuine LTS tier
+(18+ months behavior-stable, SLA-backed), this bottleneck starts dissolving.
+None has as of August 2026.
 
-**Concrete examples.** AIME 2025 near-perfect scores coexisting with 2.4×
-differences in true failure rates between "equivalent" models [A3]; a
-Microsoft Build coding agent failing to fix build errors after 11 prompts
-from four engineers, feeding public ROI skepticism [A4]; GPQA going from
-daunting (early 2024) to effectively saturated within ~a year [A2].
+**Why Big Players stay quiet — our incentive-based interpretation (analysis,
+not established fact).** The whole enterprise sales motion rests on "AI is
+the new infrastructure." Nobody buying infrastructure accepts 60-day
+deprecation cycles — database vendors promise years. Saying the quiet part
+("our models are more like fashion than like Postgres") invites customers to
+demand LTS contracts, which would cap iteration speed, and invites
+regulators to ask whether something sold as infrastructure should be
+regulated like it. There is also a telling detail: OpenAI deprecated its
+own Evals platform in June 2026 while marketing reliability to enterprises
+[S1] — admitting how fast even flagship-adjacent tooling dies undercuts the
+stability pitch. Silence is cheaper.
 
-**Mitigation paths.** (1) Reliability-first evals: importance-sampling
-frameworks estimating five-nines failure rates affordably [A3]. (2)
-Dynamic/contamination-resistant benchmarks (LiveCodeBench pattern) plus
-governed retirement criteria [A2, A5]. (3) Domain-embedded evaluation —
-private, task-realistic suites run continuously against production
-distribution shift, treated as part of deployment rather than an
-afterthought [A4]. (4) Institutional-memory systems that make past verified
-outcomes queryable at decision time (the Challenge 3 prototype is a minimal
-instance).
-
-**Why Big Players have incentives not to emphasize this — our incentive-based interpretation (analysis, not established fact).**
-Frontier labs' marketing is built on benchmark wins; admitting that
-benchmarks stop measuring anything within months undermines the very
-numbers in their launch posts [A1, A2]. Cloud/API vendors monetize
-capability demos, not reliability certificates — evaluation produces no
-invoiceable unit, so it is structurally under-funded relative to training
-runs [A4]. And no lab benefits from third parties gaining the tools to
-independently verify contested claims: developer-reported numbers already
-diverge from independent replications [A1]. The silence isn't coordinated;
-it's convergent incentives.
-
-**What we think would actually improve it (our assessment).** Treat evals
-like CI: continuous, domain-embedded, versioned against production traffic,
-with published uncertainty bounds — plus standardized "reliability
-reporting" analogous to SLOs (failure rate at stated confidence), so
-procurement can compare models on measured risk instead of saturated
-leaderboard deltas. Regulation will eventually demand exactly this for
-high-stakes deployment; whoever builds the practice first defines the audit
-standard.
-
-**Limitations & counterarguments.** See "Counterarguments" section.
+**What would actually help.** Machine-readable deprecation feeds (an RSS
+equivalent — trivially cheap, still absent); contractual behavior-stability
+windows priced as a premium tier; industry-standard "model semver" so
+breaking changes are machine-detectable. Customers are already building the
+workarounds (routing layers, contract tests, owned calendars [S2]) — the
+market is paying a private tax to patch a public gap.
 
 ---
 
-## Bottleneck 2 — High-quality training data exhaustion
+# Bottleneck 2 — The rights wall arrived before the volume wall
 
-**Definition.** The approaching point at which frontier-scale training
-consumes essentially all available high-quality human-generated public text,
-converting data from a commodity into a scarce production input.
+**What it is.** The public debate is about running out of internet — token
+counts, 300T estimates, synthetic data. That debate is a decoy. The binding
+constraint moved in 2024–2025 from *volume* to *rights*: text that cannot
+legally be used might as well not exist, and the courts and the market have
+started attaching prices and expiry dates to what was previously free to
+crawl.
 
-**Why it exists.** Scaling laws reward dataset growth superlinearly relative
-to the stock of suitable text. Epoch AI estimates the effective stock of
-public human text at ~300 trillion tokens (90% CI: 100T–1000T) and projects
-full utilization between 2026 and 2032 under historical growth; if models
-train compute-optimally, the wall arrives around a 5e28 FLOP run — expected
-~2028 [B1].
+**Evidence it exists.**
 
-**Technical/economic roots.**
-- *Chinchilla-optimal* training demands tokens ∝ parameters; the stock grows
-  with internet output (slow) while dataset sizes grow exponentially [B1, B2].
-- *Inference economics couples in*: labs overtrain models (more tokens per
-  parameter) to cut serving costs — Llama-3-70B was ~10× overtrained. Under
-  profit-maximizing policies, 5–100× overtraining moves full utilization to
-  2027 or even 2025 [B1]. Bottleneck 3 therefore accelerates bottleneck 2.
-- *Quality asymmetry*: filtering and multi-epoch reuse expanded the effective
-  stock 2–5× (why Epoch revised its own estimate out from "before 2026"),
-  but such techniques have diminishing returns and multi-epoch reuse has
-  measurable limits [B1, B2].
+- Anthropic's copyright class action settled in September 2025 for a
+  reported $1.5B — the largest copyright recovery in history — establishing
+  a de facto baseline of roughly $3,000 per work that now functions as a
+  reference price across the whole market [S6, S7].
+- Data access became recurring opex with expiration dates, not a one-time
+  crawl: Reddit licenses to Google (~$60M/yr) and OpenAI (~$70M/yr) — about
+  $130M/yr, ~10% of Reddit's total revenue per its SEC filings [S8] — and
+  by mid-2026 those deals were up for renegotiation with Reddit publicly
+  weighing *blocking* Google's access entirely [S10].
+- The same content carries two simultaneous prices: Reddit sued Anthropic
+  in June 2025 alleging 100,000+ unauthorized scrapes while cashing checks
+  from Google and OpenAI [S9]. Getty won judgment in its UK case in Nov
+  2025; NYT v. OpenAI remains active [S7].
+- Deal volume went from 12 disclosed licensing deals in 2023 to a projected
+  ~127 by mid-2026, with roughly $2B in disclosed value led by News
+  Corp–OpenAI ($250M over five years) and News Corp–Meta (up to $50M/yr)
+  [S6, S7].
 
-**Why current approaches don't fully solve it.**
-- *Synthetic data* risks distribution collapse without careful verification
-  pipelines — which reintroduces the evaluation bottleneck (what verifies
-  synthetic quality?); it works today mainly in verifiable domains (math,
-  code).
-- *Licensing/private data* (e.g., reported ~$60M/yr Google–Reddit deal) is
-  real but bounded by what exists and by antitrust/privacy constraints.
-- *Efficiency gains* (better architectures) change the exponent, not the
-  sign, of the constraint.
+**Why it's structural.** Unlike the volume wall, this constraint *tightens*
+over time regardless of technical progress: every court decision raises the
+price floor, every expiring deal is repriced upward, and opt-outs compound.
+Compute scales with capital; rights scale with litigation, and litigation
+has no Moore's law.
 
-**Why it matters going forward.** The marginal resource for capability
-growth shifts from compute (elastic) to verified human knowledge (inelastic).
-Whoever controls proprietary, high-quality corpora gains a compounding moat;
-public-open-model parity becomes harder to sustain; and the economic logic
-pushes toward inference-cheap overtrained models — tightening bottleneck 3
-in a loop.
+**Counterargument and falsifier.** "Licensing deals prove the market works;
+content flows to whoever pays." That is true for the top ~100 publishers —
+and irrelevant for the long tail that made web-scale training possible.
+Nobody can sign 100M individual authors. The settlement price floor makes
+the tail *more* litigable, not less. Falsifier: if a functioning collective-
+licensing mechanism emerged (a BMI for text) that cleared most rights
+cheaply, the wall would come down. As of August 2026 nothing resembling it
+exists.
 
-**Concrete examples.** Epoch's documented revision history (2022: HQ text
-exhausted "before 2026" → 2024: median 2028) shows both the seriousness and
-the uncertainty [B1, B2]; Nature gave the projection mainstream scientific
-legitimacy in Dec 2024 [B3]; licensing deals and litigation over scraping
-(2023–2026 news flow) are the market pricing this scarcity in real time.
+**Why Big Players stay quiet — our incentive-based interpretation (analysis,
+not established fact).** Three silences stack here. Admitting that usable
+supply is priced-per-work and expiring kills the scale narrative ("we'll
+just train on more") that drives valuation. Naming the $3k/work floor out
+loud invites every rights-holder on earth to demand it. And conceding that
+past training may have been infringing has direct legal exposure — which is
+why public statements stay frozen on "efficiency and synthetic data" while
+the real action happens in court dockets and contract negotiations nobody
+keynotes. The one thing no frontier lab will say: the scarce resource of
+this decade is not compute or tokens. It is *cleared* text.
 
-**Mitigation paths.** Verification-gated synthetic data generation;
-data-efficient training (distillation, curriculum); retrieval-augmented
-systems that externalize knowledge instead of parameterizing all of it;
-institutional investment in proprietary data flywheels (user interactions →
-curated corpus).
-
-**Why Big Players have incentives not to emphasize this — our incentive-based interpretation (analysis, not established fact).** Data strategy
-is the core of every frontier lab's moat. A lab that says how close the
-public corpus is to exhaustion, or how much of it has already been consumed,
-hands competitors a map of its remaining runway and tells rights-holders
-exactly when their pricing leverage peaks [B1, B3]. Meanwhile "we're running
-out of internet" is a terrible pitch to regulators weighing data-licensing
-rules and to courts deciding fair-use cases. Better to speak of efficiency
-and synthetic data. The one lab figure who addressed it publicly did so with
-a reassuring probability, not a plan.
-
-**What we think would actually improve it (our assessment).** The durable
-answer is *verified-generation flywheels*: systems that turn user
-interactions into curated, permissioned training corpora (with consent and
-provenance metadata baked in), plus verification-gated synthetic pipelines —
-both shift the constraint from "scrape faster" to "verify better", which
-conveniently is Bottleneck 1's tooling. Data-efficient architectures and
-retrieval-externalized knowledge reduce demand at the margin but won't
-remove the wall.
-
-**Limitations & counterarguments.** See "Counterarguments" section.
+**What would actually help.** Collective licensing with blanket rights
+(the music-industry model); provenance metadata standards so consent is
+machine-checkable at crawl time; revenue-share arrangements tied to
+inference rather than one-time training fees. All three exist as proposals;
+none exists as infrastructure, because building it means admitting the wall
+is real.
 
 ---
 
-## Bottleneck 3 — Inference economics
+# Bottleneck 3 — Effective-context collapse
 
-**Definition.** The structural shift of AI's cost center from training to
-serving, combined with agentic workloads' non-linear token consumption —
-producing falling per-token prices alongside rising total spend and
-inverting unit economics for agent products.
+**What it is.** Context window size became the spec-sheet arms race of
+2024–2026: 128K, 200K, 400K, a million tokens, printed on every model card.
+Measured reality: the fraction of that window over which a model *reasons
+reliably* is far smaller, task-dependent, and almost never published. You
+pay per token for the whole window; you get reliable recall from a slice
+of it.
 
-**Why it exists.** Every deployed user, query, and agent step pays inference;
-only one training run happens per model. In 2026, cumulative global
-inference spending passed training ("the Inference Flip"); inference now
-accounts for ~85% of enterprise AI budgets and ~two-thirds of global AI
-compute spend [C1].
+**Evidence it exists.**
 
-**Technical/economic roots.**
-- *Agentic multiplication*: an insurance-claim agent reasoning through steps,
-  calling sub-agents, and reloading context consumes 5–30× the tokens of a
-  single-shot request [C2]; loops and retries multiply consumption another
-  3–7× before optimization [C3]. Reasoning tiers charge $8–20 per M output
-  tokens where buyers pay for hidden thinking too.
-- *Jevons dynamics*: API prices fell ~80% from early 2025 to 2026 (GPT-4-class
-  capability ≈$0.40/M vs $30/M in March 2023), yet Gartner projects total
-  spend rising because cheaper tokens enable disproportionately more
-  token-hungry capabilities [C1]. Enterprise model-usage spend tripled to
-  ~$7M average in 2025; many orgs exceed 10B tokens/month [C2].
-- *Margin math*: enterprise AI gross margins slid 40%→33% (Deloitte Q4 2025);
-  documented cases show unit economics inverting at 500–1,000 users, far
-  below enterprise scale [C3]. OpenAI's widely reported ~$5B loss on ~$3.7B
-  2025 revenue is the frontier-scale version of the same shape [C4].
+- RULER (NVIDIA, COLM 2024) evaluated 17 models claiming ≥32K contexts:
+  only four sustained satisfactory performance even at 32K. Claimed vs
+  effective: LWM 1M → under 4K; Yi-34B 200K → 32K; GPT-4 128K → 64K;
+  Command-R 128K → 32K [S11].
+- NoLiMa (LMU Munich + Adobe Research, 2025) removed the lexical overlap
+  that lets models cheat needle-tests: effective lengths collapsed to
+  ≤2K–8K tokens for most models claiming 128K+ — Llama 3.3 70B fell from a
+  claimed 128K to ~8K effective [S12].
+- The shape problem predates both: "Lost in the Middle" (Liu et al., 2023)
+  showed recall depends strongly on *where* information sits, not just how
+  much there is [S13]. Follow-up work in 2026 found information density
+  collapses effective context earlier than length alone predicts [S14].
+- Practitioner synthesis puts it bluntly: retrieval feeds the model 17–38%
+  of the tokens a full-window approach consumes, and at volume the cost
+  difference reaches orders of magnitude — which is why RAG refuses to die
+  despite every "RAG is dead, long context killed it" headline [S14].
 
-**Why current approaches don't solve it.** Hardware improves fast (Blackwell:
-up to 10× tokens/watt vs Hopper; Gartner forecasts >90% per-token cost
-decline by 2030) — but each efficiency wave gets absorbed by demand growth
-and new spending axes (test-time compute, long context, multimodality).
-Routing/caching (semantic caches save 3–10× on repetitive traffic; memory-
-augmented plan reuse cuts latency 100× on hits) helps locally and is exactly
-where the industry is now racing [C1].
+**Why it's structural.** Attention over a window is not memory over a
+window. Making a million tokens *reliably* useful requires architectural
+changes whose costs (attention compute, training data with genuinely
+long-range dependencies, evaluation at length) all scale badly. Meanwhile
+the marketing benefit of a bigger number is instant and free.
 
-**Why it matters going forward.** Product strategy inverts: the constraint
-is no longer "can the model do it" but "can serving it survive contact with
-real usage volumes." This privileges smaller routed models, aggressive
-caching, and — notably — *not re-learning what the organization already
-knows*: retrieving verified prior solutions instead of paying tokens to
-re-derive them. (Again, Challenge 3.)
+**Counterargument and falsifier.** "The window is honest — it's an input
+limit, and capability keeps improving; NoLiMa-style results reflect older
+models." Partly fair: newer models score better. But the claim being sold
+is the window, and no frontier lab publishes accuracy-versus-length curves
+for its own flagship next to the spec number. If the gap had closed, the
+curves would be marketing assets — their absence is the tell. Falsifier:
+vendors publishing reliability-vs-length curves as prominent as the window
+number would retire this bottleneck.
 
-**Concrete examples.** Fintech fraud-detection agent: $5K/month at 50 users
-(Nov 2025) → $15K/month at just 500 users (Jan 2026), losses by ~700–1,000
-concurrent users [C3]; demo-day pattern of agents collapsing at turn ~10 as
-context reloads compound [C3]; IDC warning that even well-staffed orgs
-underestimate AI infrastructure costs by up to 30% [C1].
+**Why Big Players stay quiet — our incentive-based interpretation (analysis,
+not established fact).** Context length is the last spec-sheet number a
+buyer can compare without reading a benchmark methodology, so it carries
+enormous marketing leverage; publishing honest curves would reset every
+competitor comparison overnight and admit that RAG plumbing — unglamorous,
+unmonetized by the lab — is still required. There is also a pricing angle
+worth naming carefully as interpretation: per-token input pricing monetizes
+the region of the window beyond effective context. The unusable part of the
+window still bills.
 
-**Mitigation paths.** Model routing (cheap/fast tier + deep tier — GPT-5's
-internal router validates the pattern); semantic caching and plan-reuse
-memory; token-budget observability (FinOps for AI); distillation of big-model
-behavior into cheap executors; designing agents to *retrieve before they
-reason*.
-
-**Why Big Players have incentives not to emphasize this — our incentive-based interpretation (analysis, not established fact).** Every provider's
-revenue story assumes inference demand keeps compounding; publishing unit
-economics that show negative gross margin at frontier scale [C4] invites
-both customer price pressure and investor questions about when the flywheel
-stops. Enterprise vendors bury serving costs inside subscription pricing
-because itemized token bills kill adoption momentum [C2]. And nobody selling
-agents wants the words "your margin inverts at ~500 users" [C3] anywhere
-near their pitch decks — the cost crisis is discussed in FinOps blogs, not
-keynotes. *We flag explicitly: this paragraph is our reading of industry
-incentives, supported circumstantially (what IS discussed publicly vs what
-isn't), not a documented fact about any company's communications strategy.*
-
-### Separating evidence from hypothesis in this bottleneck
-
-- **What the evidence establishes:** inference cost scales with agent usage
-  and is now a material enterprise P&L line — the spend-flip data [C1],
-  Deloitte/Vista survey figures on token volumes and budgets [C2], and
-  documented margin compression are consistent across sources of different
-  quality.
-- **What remains our interpretation/hypothesis:** (a) that per-token price
-  declines will continue to be outpaced by consumption growth (Jevons) —
-  plausible, Gartner-aligned [C1], but a forecast, not a measurement; (b)
-  that specific figures from secondary sources (C3's "500-user inversion",
-  C4's loss estimates) should be treated as industry claims/anecdotes
-  indicating direction, not as verified numbers; (c) the entire incentive
-  argument above.
-
-This distinction is deliberate: the bottleneck's existence rests on solid
-ground; its *severity trajectory* and the silence-around-it claim rest on
-reasoning we own.
-
-**What we think would actually improve it (our assessment).** Three levers,
-in impact order: (1) *retrieve-before-reason* architectures — memory/caching
-layers that answer from prior verified work instead of re-deriving tokens
-(the measured 3–10× wins already beat most model swaps [C1]); (2) routed
-heterogeneous fleets — cheap executors for the common path, deep reasoning
-only on hard slices, with token budgets enforced as first-class SLOs;
-(3) distillation loops turning expensive reasoning traces into cheap
-executors. All three are engineering disciplines, not research bets — which
-is exactly why they're under-discussed: they don't sell new models.
-
-**Limitations & counterarguments.** See "Counterarguments" section.
+**What would actually help.** Publish effective-context curves per task
+family (retrieval / multi-hop / aggregation) beside every window spec;
+price by *effective* tokens or offer long-context tiers honestly; standard
+benchmarks (RULER-class) run at release and reported in model cards. The
+research community already built the measurement tools — adoption is the
+missing piece, and adoption is exactly what the incentives resist.
 
 ---
 
-## Counterarguments to our position
+## Why these three, and not the famous ones
 
-**Against #1 (evaluation).** *Falsifier:* if domain-embedded eval suites +
-five-nines sampling become routine commodities (as cloud benchmarking
-platforms claim), the gap closes commercially and stops being structural.
-Also, convergence at the frontier could reduce the *need* for fine-grained
-discrimination — "any top model suffices" is itself an answer. Rebuttal:
-saturation studies show measurement noise, not equivalence [A5]; and
-regulated deployment needs certification, not leaderboards.
+| Famous bottleneck | Why it fails the brief's test |
+|---|---|
+| Benchmark saturation | Keynoted constantly ("evals crisis" panels at every major conference); labs fund eval teams publicly |
+| Training-data exhaustion (token counts) | Epoch-style estimates are among the most-cited AI articles on the internet |
+| Inference economics / GPU costs | Earnings-call staple; CFOs discuss it openly |
 
-**Against #2 (data).** Dario Amodei assigns only ~10% probability to data
-scarcity materially stalling progress — efficient algorithms and synthetic
-data may substitute. Epoch itself revised exhaustion outward once (2024→2028)
-when filtering/multi-epoch techniques improved [B1]. *Falsifier:* continued
-capability growth through 2030+ with stable data inputs would falsify the
-scarcity framing. Rebuttal: the claim is not "progress stops" but "the
-marginal input changes from elastic compute to inelastic verified knowledge"
-— which Amodei's own licensing strategy behaviorally confirms.
+Each of our three inverts that: the facts sit in changelogs, court dockets,
+and appendix tables — places a buyer might look but a keynote never goes.
+That placement is not accidental, and connecting the placement to the
+incentives is our interpretation, offered as analysis rather than fact.
 
-**Against #3 (inference).** Per-token prices are collapsing on trend lines
-(80%/year by some measures); extrapolating current agentic token appetite
-ignores both hardware learning curves and algorithmic efficiency (test-time
-compute may get 10× cheaper). *Falsifier:* enterprise AI gross margins
-recovering toward SaaS norms while agent usage grows would show the crisis
-self-resolving. Rebuttal: Gartner's explicit warning — deflation of
-commodity tokens ≠ deflation of frontier reasoning [C1] — plus observed
-margin compression despite two years of price cuts suggests demand elasticity
-keeps winning.
+## How the three interlock
 
-## Conclusion
+They compound on the same victim: the team trying to build on top.
+Model churn (1) forces constant revalidation; effective-context collapse
+(3) means the revalidation must measure curves, not single numbers; the
+rights wall (2) shapes what the next generation of models can even learn,
+pushing vendors toward proprietary data flywheels — which further locks in
+churn because switching providers means abandoning the flywheel you fed.
 
-Evaluation, data, and inference economics form one coupled system: scarce
-data raises token values; opaque evaluation prevents verifying what tokens
-bought; and unverified agentic loops burn tokens fastest of all. Teams that
-treat these as first-class engineering constraints — building measurement,
-memory, and cost discipline into their development loop rather than bolting
-them on — hold the compounding advantage the next phase of AI development
-will reward. `comparison.md` ranks the three by impact horizon and
-actionability.
+Full source list with quality tiers: [`sources.md`](sources.md).
+Head-to-head ranking: [`comparison.md`](comparison.md).
