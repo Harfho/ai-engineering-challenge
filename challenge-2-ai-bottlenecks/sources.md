@@ -68,6 +68,27 @@ only for direction, never precise magnitudes.
   acingai.com, Jun 21, 2026 — retrieval consumes 17–38% of full-window
   tokens; orders-of-magnitude cost gap at volume. Synthesis of published
   studies; ratios directional.
+- **[S15] "OpenAI Sunset: AI Model Retirement Guides Developer
+  Migration"**, AICERTS News, 2026 — GPT-4o family timeline: deprecation
+  notice Nov 18, 2025 → ChatGPT removal Feb 13, 2026 → API alias disabled
+  Feb 17, 2026 → enterprise access ends Apr 3, 2026. News write-up citing
+  OpenAI's own blog, help-center and platform pages. Used for the
+  announcement-to-removal interval only; the underlying dates are OpenAI's.
+
+## Which sources answer which question
+
+The brief's four questions per bottleneck, mapped to evidence:
+
+| Question | B1 · Rented cognition | B2 · Rights wall | B3 · Context collapse |
+|---|---|---|---|
+| What is it? | S1 S2 S3 (lifecycle facts) | S6 S7 S8 (prices, expiries) | S11 S12 (claimed vs effective) |
+| Why does it exist? | capital concentration — structural argument; S1 S5 for behavior-change mechanics | default flip crawlable→licensed: S7 S9 litigation record | architecture + benchmark gaming: S11 S12 S13 |
+| Why worse at scale? | integration depth × vendor concentration — analysis from S2 S4 cost data | ratcheting floors/target richness — S6 S7 S8 trends | agent context accumulation + billing structure — S14 |
+| Why stay quiet? *(interpretation)* | no source can prove motive; argued from S1–S3 incentives (LTS vs iteration speed) | same; argued from S6–S10 settlement/deal economics | same; argued from S11–S14 marketing/pricing dynamics |
+
+That last row is deliberate: motives are not documentable facts, so the
+analysis labels them interpretation and cites only the *incentive
+structures* the documents establish.
 
 ## Quality tiers and conflicts
 

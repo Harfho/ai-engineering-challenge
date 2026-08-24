@@ -53,7 +53,7 @@ The asymmetry has five faces:
   notice [S1].
 - **Lifecycle**: deprecation clocks run 60–62 days at Anthropic in practice
   [S2, S3]; OpenAI removed the GPT-4o family from ChatGPT about two weeks
-  after announcement [S2]. Publishing the schedule makes the clock
+  after announcement [S15]. Publishing the schedule makes the clock
   transparent; it does not give the customer any control over it.
 - **Pricing**: unilaterally set, changed historically without negotiated
   protection.
