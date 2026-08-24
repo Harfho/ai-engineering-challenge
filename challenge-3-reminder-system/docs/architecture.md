@@ -1,7 +1,7 @@
 # Architecture — Model-Agnostic Reminder System
 
 > STATUS: final. This document reflects the system as implemented and
-> tested (19/19 offline tests, reproducible demo). Where a design changed
+> tested (21/21 offline tests, reproducible demo). Where a design changed
 > during development, the *reason* is recorded — dead ends are evidence.
 
 ## 1. Components
@@ -170,7 +170,7 @@ a reminder fired — machine-readable trust.
 
 ## 8. Testing strategy
 
-19 tests, stdlib `unittest`, fully offline and deterministic:
+21 tests, stdlib `unittest`, fully offline and deterministic:
 
 - **Per stage**: ingest validation/coercion; error identification incl.
   normalization stripping ids; clustering (recurrence gates, session spread);

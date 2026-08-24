@@ -17,8 +17,9 @@
 
 ## Tooling note
 
-`nmap` is not currently installed on this machine. Phase 2 will begin by
-installing or building equivalent capability; tool provenance will be recorded.
+`nmap` was unavailable without elevated privileges, so an auditable
+asyncio-based TCP scanner was used instead (`tools/tcp_scan.py`); tool
+provenance is recorded with each evidence artifact.
 
 ## Deliverable
 

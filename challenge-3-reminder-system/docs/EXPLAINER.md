@@ -222,7 +222,7 @@ a dependency. (Hybrid scoring already includes an embedding cosine slot.)
 **"How do you know retrieval works?"**
 Tests assert behavior end-to-end: paraphrased queries rank the correct
 reminder first; irrelevant queries return empty; top_k respected; results
-survive a persistence roundtrip. 19 tests, all offline/deterministic.
+survive a persistence roundtrip. 21 tests, all offline/deterministic.
 
 **"What are its limits?"** (say these proactively — credibility)
 Batch-only learning (no streaming updates) · category table maintenance
