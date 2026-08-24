@@ -91,7 +91,7 @@ afterthought [A4]. (4) Institutional-memory systems that make past verified
 outcomes queryable at decision time (the Challenge 3 prototype is a minimal
 instance).
 
-**Why no Big Player emphasizes this (incentive analysis).**
+**Why Big Players have incentives not to emphasize this — our incentive-based interpretation (analysis, not established fact).**
 Frontier labs' marketing is built on benchmark wins; admitting that
 benchmarks stop measuring anything within months undermines the very
 numbers in their launch posts [A1, A2]. Cloud/API vendors monetize
@@ -169,7 +169,7 @@ systems that externalize knowledge instead of parameterizing all of it;
 institutional investment in proprietary data flywheels (user interactions →
 curated corpus).
 
-**Why no Big Player emphasizes this (incentive analysis).** Data strategy
+**Why Big Players have incentives not to emphasize this — our incentive-based interpretation (analysis, not established fact).** Data strategy
 is the core of every frontier lab's moat; disclosing how close the public
 corpus is to exhaustion — or how much of it you have already consumed —
 hands competitors a map of your remaining runway and tells rights-holders
@@ -248,7 +248,7 @@ memory; token-budget observability (FinOps for AI); distillation of big-model
 behavior into cheap executors; designing agents to *retrieve before they
 reason*.
 
-**Why no Big Player emphasizes this (incentive analysis).** Every provider's
+**Why Big Players have incentives not to emphasize this — our incentive-based interpretation (analysis, not established fact).** Every provider's
 revenue story assumes inference demand keeps compounding; publishing unit
 economics that show negative gross margin at frontier scale [C4] invites
 both customer price pressure and investor questions about when the flywheel
@@ -256,7 +256,28 @@ stops. Enterprise vendors bury serving costs inside subscription pricing
 because itemized token bills kill adoption momentum [C2]. And nobody selling
 agents wants the words "your margin inverts at ~500 users" [C3] anywhere
 near their pitch decks — the cost crisis is discussed in FinOps blogs, not
-keynotes.
+keynotes. *We flag explicitly: this paragraph is our reading of industry
+incentives, supported circumstantially (what IS discussed publicly vs what
+isn't), not a documented fact about any company's communications strategy.*
+
+### Separating evidence from hypothesis in this bottleneck
+
+- **What the evidence establishes:** inference cost scales with agent usage
+  and is now a material enterprise P&L line — the spend-flip data [C1],
+  Deloitte/Vista survey figures on token volumes and budgets [C2], and
+  documented margin compression are consistent across sources of different
+  quality.
+- **What remains our interpretation/hypothesis:** (a) that per-token price
+  declines will continue to be outpaced by consumption growth (Jevons) —
+  plausible, Gartner-aligned [C1], but a forecast, not a measurement; (b)
+  that specific figures from secondary sources (C3's "500-user inversion",
+  C4's loss estimates) should be treated as industry claims/anecdotes
+  indicating direction, not as verified numbers; (c) the entire incentive
+  argument above.
+
+This distinction is deliberate: the bottleneck's existence rests on solid
+ground; its *severity trajectory* and the silence-around-it claim rest on
+reasoning we own.
 
 **What we think would actually improve it (our assessment).** Three levers,
 in impact order: (1) *retrieve-before-reason* architectures — memory/caching

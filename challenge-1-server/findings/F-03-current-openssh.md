@@ -23,6 +23,11 @@ long deprecated).
 - Signals the host is administered, not abandoned — raises expected quality
   of other controls (e.g., key-only auth plausibly already configured).
 
+**Caveat (important):** a current version is not a secure configuration.
+Auth policy (`PasswordAuthentication`, `PermitRootLogin`), per-user
+restrictions, and crypto settings cannot be observed pre-authentication;
+"current" reduces the known-CVE risk class only.
+
 ## Remediation
 
 Continue routine unattended-upgrades/security patching. No action required.

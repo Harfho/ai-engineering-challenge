@@ -37,10 +37,13 @@ Raw scan result: [`reconnaissance/raw/03-tcp-scan-full.json`](reconnaissance/raw
 
 ## 4. What software/services are behind those ports?
 
-**`SSH-2.0-OpenSSH_10.0p2`** — current-generation OpenSSH (10.x GA April
-2025), protocol 2 only. KEXINIT probe shows stock upstream defaults incl.
-post-quantum hybrid kex (`mlkem768x25519` offered first) → uncustomized,
-honestly-bannered daemon; no banner fakery indicators.
+**`SSH-2.0-OpenSSH_10.0p2`** — appears to be current-generation OpenSSH
+(10.x line GA April 2025), protocol 2 only. KEXINIT probe shows stock
+upstream defaults incl. post-quantum hybrid kex (`mlkem768x25519` offered
+first) → uncustomized, honestly-bannered daemon; no banner fakery
+indicators. Note: version currency *suggests* active patching but does not
+establish secure configuration — auth policy remains unverifiable without
+login.
 
 Evidence: banner capture + KEXINIT transcript in
 [`03-portscan-ssh-banner.md`](reconnaissance/03-portscan-ssh-banner.md) and
@@ -48,18 +51,27 @@ Evidence: banner capture + KEXINIT transcript in
 
 ## 5. Are there vulnerabilities, misconfigurations, or unusual behavior?
 
-**No exploitable vulnerability found; posture is unusually good; three minor
-observations.** (External recon only — no exploitation attempted.)
+**No externally verifiable exploitable vulnerability was identified within
+the assessment scope.** Posture appears unusually deliberate; three
+observations recorded. (External, unauthenticated recon only — no login,
+no exploitation attempted.)
 
-- **Shodan flags zero known CVEs** for this host/version.
-- **Unusual (positive):** default-DROP everything except SSH while the wider
-  block stays pingable — selective hardening, rare among internet hosts.
+- **Shodan flags zero known CVEs** for this host/version; independent
+  passive intel agrees with our active scan exactly.
+- **Unusual (positive):** default-DROP everything except SSH while the
+  wider block stays pingable — selective hardening, rare among internet hosts.
 - **F-01 (LOW):** SSH exposed on standard port = constant brute-force noise;
   key-only auth could not be verified externally. → verify
   `PasswordAuthentication no`, `PermitRootLogin no`.
 - **F-02 (INFO):** No PTR record (hygiene, affects mail/log readability).
 - **Caveat:** if any public web/mail service was intended here, it is
   unreachable from tested vantage points — availability misconfiguration.
+
+**Scope bounds on this answer:** local configuration behind SSH was not
+inspected (no credentials), and **UDP services were not assessed at all** —
+a TCP-only methodology cannot see them. "No findings" here means "none
+detectable by the methods used", which is deliberately narrower than
+"secure".
 
 Findings with severity rationale & remediation:
 [`findings/F-01-ssh-exposure.md`](findings/F-01-ssh-exposure.md) …

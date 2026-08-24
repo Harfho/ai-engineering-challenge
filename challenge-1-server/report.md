@@ -17,16 +17,21 @@ The assessment owner asked us to investigate their server at
 confirms the host sits in FlokiNET ehf space in Iceland (AS200651,
 prefix 185.146.233.0/24). A full TCP connect scan of all 65,535 ports found
 exactly **one open port — 22/tcp**, answering `SSH-2.0-OpenSSH_10.0p2`; the
-remaining 65,534 ports are silently filtered. The OpenSSH version is
-current-generation, indicating active patching.
+remaining 65,534 ports are silently filtered. The OpenSSH package appears
+current-generation, which suggests active patching — though currency of
+version does not establish security of configuration (see §10).
 
-Overall risk posture: **strong**. The attack surface is a single, well-
-maintained service behind default-deny filtering. Findings: F-01 SSH
-exposure (LOW), F-02 missing PTR record (INFO), F-03 current OpenSSH
-(INFO-positive), F-04 deliberate deny-by-default posture with an
-availability caveat (INFO-positive). No exploitable condition was
-identified from external reconnaissance alone; the highest-value remaining
-control is confirming key-only SSH authentication.
+**Scope statement:** this was an external, unauthenticated assessment.
+**No externally verifiable exploitable vulnerability was identified within
+the assessment scope.** That is weaker than "the server is secure": local
+configuration, UDP services (not assessed — see Limitations), and anything
+behind SSH remain unexamined.
+
+Findings: F-01 SSH exposure (LOW), F-02 missing PTR record (INFO), F-03
+current OpenSSH version (INFO-positive, with configuration caveat), F-04
+deliberate deny-by-default posture with an availability caveat
+(INFO-positive). The highest-value remaining control is confirming key-only
+SSH authentication — which requires authorized login to verify.
 
 ## 2. Scope
 
@@ -127,9 +132,13 @@ rate-limiting.
 Reverse zone delegated but no record published. Hygiene issue affecting
 mail deliverability and log readability, not exploitable.
 
-### F-03 — OpenSSH 10.0p2, actively maintained (INFO, positive)
-Current-generation daemon implies patch discipline within ~the last year;
-materially lowers residual risk of F-01.
+### F-03 — OpenSSH 10.0p2, appears current-generation (INFO, positive + caveat)
+Current-generation daemon *suggests* patch discipline within roughly the
+last year; materially lowers the likelihood of known-CVE exploitation.
+**Caveat: a current version is not a secure configuration** — auth policy,
+per-user restrictions, and crypto settings are invisible pre-auth and were
+not verified. This finding reduces one risk class (known vulns in the
+daemon); it says nothing about how sshd is configured.
 
 ### F-04 — Default-deny TCP posture; ICMP permitted (INFO, positive + caveat)
 65,534 ports dropped silently while the block answers ICMP elsewhere —
@@ -175,20 +184,25 @@ Priority order:
 
 ## 10. Limitations
 
+> Read this section before the findings: it bounds every claim above.
+
 - **No exploitation, no credentialed access:** findings reflect external
-  reconnaissance only; sshd configuration (key-only? root login?) and host
-  internals unverified.
-- **Single vantage point:** ~~one source IP performed all probing;~~
-  **resolved post-scan** — Shodan InternetDB's global sensor history agrees
-  exactly (22 only, same version, no CVEs). Residual: Shodan is passive and
-  periodic, so a briefly-lived service between its sweeps could evade both
-  methods.
-- **UDP unscanned:** connect-scanning does not observe UDP; deferred given
-  total TCP filtering made broader exposure unlikely.
+  reconnaissance only. sshd configuration (key-only? root login?), local
+  services bound to localhost, and host internals are unverified.
+- **UDP was not assessed — and this is the largest blind spot.** A TCP
+  connect scan cannot see UDP services; DNS, SNMP, VPN endpoints, QUIC, or
+  game/session protocols on UDP would be invisible to everything in this
+  report. "Vulnerabilities or anomalies" may therefore exist that this
+  methodology cannot detect. UDP probing was deferred because total TCP
+  filtering made broad exposure unlikely — that is an inference, not a
+  measurement.
+- **Single vantage point (TCP), partially resolved:** our active scan was
+  later corroborated by Shodan's independent passive history
+  (`04-purpose-analysis.md`); both could still miss briefly-lived services.
 - **Tooling constraint:** nmap unavailable (no sudo in agent shell);
   equivalent coverage achieved with a custom asyncio connect scanner whose
-  source is committed for audit. OS fingerprinting and service-version
-  probes beyond banners were therefore out of reach.
+  source is committed for audit. OS fingerprinting and scripted service-
+  version probes beyond banners were out of reach without it.
 - **Timing:** snapshot assessment (one window on 2026-08-24); posture may
   differ at other times or from other networks.
 

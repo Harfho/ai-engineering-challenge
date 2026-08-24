@@ -101,8 +101,16 @@
 - B1 revises B2 upward (better filtering + multi-epoch use expanded effective
   stock 2–5×). We treat B1 as current best estimate and note the revision as
   evidence the field's own uncertainty is high — not as grounds for dismissal.
+- C3's specific figures (user-count inversion thresholds, margin percentages)
+  are industry claims/anecdotes from a consultancy blog: directionally
+  consistent with C1/C2 but not independently verified. Used only to
+  corroborate magnitude, never as primary support.
 - C4's OpenAI loss figures are journalistic estimates without filings; used
   only directionally.
 - Amodei's stated ~10% probability that data scarcity materially stalls
   progress (reported in secondary coverage of B1) is recorded as a
   dissenting expert judgment, addressed in analysis.md §B.
+- General rule applied throughout analysis.md: survey/consultancy numbers
+  (C1–C4) support *direction and importance* of inference economics; they do
+  not establish precise magnitudes. Incentive-based claims are labeled as
+  our interpretation wherever they appear.
