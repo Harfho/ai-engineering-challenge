@@ -2,41 +2,44 @@
 
 **Objective:** Identify and defend the three biggest bottlenecks in AI
 development that major companies have incentives **not** to emphasize publicly.
-**Status:** Not started — Phase 3.
+**Status:** Complete — see `analysis.md`, `comparison.md`, `sources.md`.
 
-## Plan
+## Selected bottlenecks
 
-1. **Hypothesis generation** — list candidate bottlenecks from engineering
-   knowledge; explicitly labeled hypotheses, not conclusions.
-2. **Research pass** — for each candidate: academic papers, technical reports,
-   engineering blogs/primary docs. Recorded in `sources.md` with full references.
-3. **Selection** — pick three by criteria: (a) structural (not a tooling gap),
-   (b) economically rooted (why incentives suppress discussion),
-   (c) evidence available from primary sources.
-4. **Adversarial pass** — write the strongest counterargument to each selection;
-   keep it in `analysis.md` §Counterarguments.
-5. **Write-up** — `analysis.md` (exec summary + deep dives), `comparison.md`
-   (comparison table), `sources.md`.
+1. **The evaluation & verification gap** — measurement infrastructure is
+   shrinking relative to capability; benchmarks saturate below noise; the
+   statistical floor on reliability measurement blocks certification.
+   (Validates H1; absorbs part of H4 — non-determinism matters because it
+   cannot yet be *measured* at deployment tolerances.)
+2. **High-quality training data exhaustion** — ~300T effective tokens of
+   public human text vs superlinear demand; wall window 2026–2032, pulled
+   earlier by inference-driven overtraining. (H2, with the inference
+   coupling made explicit.)
+3. **Inference economics** — serving passed training as the cost center
+   ("Inference Flip", early 2026); agentic token multiplication inverts unit
+   economics before PMF. (H3.)
 
-## Candidate hypotheses (to be validated or discarded in Phase 3)
+H4 and H5 were not discarded so much as distributed: H4's measurable core
+folds into #1, its governance half into organizational practice beyond this
+brief's scope; H5 (organizational debt) was ranked fourth — real, but better
+documented elsewhere and less suppressed by corporate incentives than the
+three selected.
 
-> These are starting points recorded deliberately as **hypotheses**.
-> Research may replace any of them.
+## Method
 
-- H1: Evaluation is the actual bottleneck (benchmarks saturate/mislead;
-  capability claims rest on weak measurement).
-- H2: Data exhaustion — high-quality human-generated training data is running
-  out faster than compute scaling remains useful; synthetic data has known
-  degradation risks.
-- H3: Inference economics — cost/latency/energy of serving frontier models
-  constrains product design more than model quality does.
-- H4: Alignment/reliability gap — non-determinism and unverifiable reasoning
-  block deployment in high-stakes domains regardless of raw capability.
-- H5: Organizational debt — human review, liability, and process constraints,
-  not model capability, gate real-world automation.
+1. **Hypothesis generation** — five candidates listed up front as hypotheses.
+2. **Research pass** — primary research (Epoch AI, arXiv saturation/reliability
+   studies), established analysis (Stanford AI Index 2026, Nature, Deloitte/
+   Vista survey data), corroborating trade press. Full annotated list with
+   quality tiers and conflict notes: `sources.md`.
+3. **Selection criteria** — structural (not a tooling gap), economically
+   rooted (incentives suppress discussion), evidence available from primary
+   sources.
+4. **Adversarial pass** — strongest counterargument + explicit falsifier per
+   bottleneck in `analysis.md` §Counterarguments.
 
 ## Deliverables
 
 - `analysis.md` — exec summary, per-bottleneck analysis (10 required elements each), counterarguments, conclusion
-- `comparison.md` — cross-bottleneck comparison table
+- `comparison.md` — cross-bottleneck comparison table + ranking rationale
 - `sources.md` — full reference list with source-quality annotations
