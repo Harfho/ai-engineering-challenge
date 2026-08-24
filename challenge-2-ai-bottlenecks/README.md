@@ -6,9 +6,10 @@ development that major companies have incentives **not** to emphasize publicly.
 
 ## Selected bottlenecks
 
-1. **The evaluation & verification gap** — measurement infrastructure is
-   shrinking relative to capability; benchmarks saturate below noise; the
-   statistical floor on reliability measurement blocks certification.
+1. **The evaluation & verification gap** — the ability to measure and verify
+   model behavior is falling behind capability; benchmarks saturate below
+   noise; the statistical floor on reliability measurement blocks
+   certification.
    (Validates H1; absorbs part of H4 — non-determinism matters because it
    cannot yet be *measured* at deployment tolerances.)
 2. **High-quality training data exhaustion** — ~300T effective tokens of

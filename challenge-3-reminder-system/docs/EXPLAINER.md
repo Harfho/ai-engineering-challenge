@@ -85,8 +85,9 @@ migration", "relation does not exist").
 1. **Identify**: each failing row fires detectors (non-empty `error` field,
    HTTP status, failure vocabulary) → becomes an ErrorEvent with a cleaned
    message: `"deploy failed: missing migration for schema change <hash>"`.
-2. **Categorize**: keyword rules tag it `[database_migration]` — crucial,
-   because the same root cause appears as totally different sentences.
+2. **Categorize**: keyword rules tag it `[database_migration]` — this step
+   matters because the same root cause shows up as totally different
+   sentences.
 3. **Cluster**: all 7 migration-category events merge into ONE pattern
    spanning 6 sessions → passes the recurrence gate (≥2× in ≥2 sessions).
 4. **Generate**: rule table maps the category to advice → *"Before altering
@@ -107,7 +108,7 @@ weak associations gets ignored within a week.
 ### Ingest (`ingest.py`)
 Validates each JSONL line (required fields present); malformed lines are
 skipped **and reported**, never fatal. *Why:* real logs are dirty; one bad
-line shouldn't kill a batch, but you must know it happened.
+line shouldn't kill a batch, but the batch owner has to know it happened.
 
 ### Error identification (`analysis.py`)
 Deterministic detectors only: error field non-empty · result contains
@@ -121,7 +122,7 @@ auditability requires knowing why something counted as an error.
 Small keyword-rule table assigns issue types: `database_migration`,
 `api_rate_limit`, `authentication`, … An optional LLM may override/refine
 the label. *Why rules first:* categories are the semantic backbone that
-makes clustering robust (next stage); rules are inspectable and free.
+keeps clustering stable (next stage); rules are inspectable and free.
 
 ### Clustering (`patterns.py`)
 Two tiers: events sharing a category form one candidate group directly;

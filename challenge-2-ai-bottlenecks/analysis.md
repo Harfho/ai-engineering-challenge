@@ -12,35 +12,36 @@ lie elsewhere. Three bottlenecks are simultaneously (a) under-emphasized
 relative to their impact and (b) structurally hard — not solvable by simply
 training larger models:
 
-1. **The evaluation & verification bottleneck** — our ability to measure,
-   verify, and trust model behavior is shrinking *relative to* model
-   capability. Benchmarks saturate faster than they can be replaced; headline
+1. **The evaluation & verification bottleneck** — the ability to measure,
+   verify, and trust AI model behavior is falling behind model capability.
+   Benchmarks saturate faster than they can be replaced; headline
    accuracy no longer predicts deployment reliability; enterprises cannot
    demonstrate value, so adoption stalls.
-2. **High-quality training data exhaustion** — the stock of human-generated
-   public text that powers scaling is finite (~300T effective tokens) and is
-   being consumed at an accelerating rate; the wall arrives 2026–2032, and
-   inference-economics-driven overtraining pulls it earlier.
+2. **High-quality training data exhaustion** — the stock of human-written
+   public text that scaling depends on is finite (roughly 300T effective
+   tokens) and is being used up at an accelerating rate. The wall arrives
+   sometime in 2026–2032, and overtraining driven by inference economics
+   pulls that date closer.
 3. **Inference economics** — the cost center of AI has flipped from training
    to serving. Agentic workloads multiply token consumption non-linearly;
    per-token prices fall while total bills rise; unit economics of agent
    products invert before product-market fit is proven.
 
-These three interlock: data exhaustion raises the value of every token
-(inference economics), while unreliable evaluation makes it impossible to
-know whether expensive tokens bought anything (evaluation). The reminder
-system prototype in Challenge 3 is a direct response to bottleneck 1's
-practical face: making verified institutional memory retrievable at the
-moment of action.
+These three feed each other. Data exhaustion makes every token worth more
+(which is the inference-economics problem), and unreliable evaluation means
+nobody can tell whether expensive tokens actually bought anything (which is
+the evaluation problem). The reminder system prototype in Challenge 3 is our
+answer to bottleneck 1's practical side: putting verified institutional
+memory in front of an agent at the moment it acts.
 
 ---
 
 ## Bottleneck 1 — The evaluation & verification gap
 
-**Definition.** The widening mismatch between what models can do and what we
-can reliably measure, predict, or certify about what they will do — spanning
-benchmark saturation, statistical floors on reliability measurement, and the
-absence of deployment-relevant evaluation.
+**Definition.** The widening mismatch between what models can do and what
+anyone can reliably measure, predict, or certify about what they will do —
+spanning benchmark saturation, statistical floors on reliability
+measurement, and the absence of deployment-relevant evaluation.
 
 **Why it exists.** Benchmarks are static artifacts evaluated against moving
 targets. Once a benchmark's top-model score gaps shrink below measurement
@@ -170,9 +171,9 @@ institutional investment in proprietary data flywheels (user interactions →
 curated corpus).
 
 **Why Big Players have incentives not to emphasize this — our incentive-based interpretation (analysis, not established fact).** Data strategy
-is the core of every frontier lab's moat; disclosing how close the public
-corpus is to exhaustion — or how much of it you have already consumed —
-hands competitors a map of your remaining runway and tells rights-holders
+is the core of every frontier lab's moat. A lab that says how close the
+public corpus is to exhaustion, or how much of it has already been consumed,
+hands competitors a map of its remaining runway and tells rights-holders
 exactly when their pricing leverage peaks [B1, B3]. Meanwhile "we're running
 out of internet" is a terrible pitch to regulators weighing data-licensing
 rules and to courts deciding fair-use cases. Better to speak of efficiency
