@@ -25,14 +25,47 @@ closed:    0
 - Zero RSTs observed: consistent with stateful DROP filtering rather than a
   host without services.
 
-### Cross-vantage caveat
+### Cross-vantage caveat — RESOLVED (artifact audit, 2026-08-24 ~10:40 UTC)
 
-The assessment owner separately ran online scanners (HackerTarget nmap,
-portchecker.io variants) and saved screenshots (`Documents/AI/portScan/*.png`)
-that are not yet machine-readable in this environment (no image input, no OCR).
-Their results must be reconciled against ours before finalizing findings —
-differences could indicate geo-filtering or rate-limiting of specific source
-ranges. PENDING until owner supplies text output.
+The assessment owner supplied saved browser artifacts (`Documents/AI/`).
+Machine audit of every HTML file shows **none of them contain scan results**:
+
+| Artifact | Target IP present? | Content |
+|---|---|---|
+| `Port Checker*.html` ×5 | no | identical landing-page shells (144026 B each); results rendered dynamically, never persisted |
+| `Online Port Scanner ... HackerTarget.com.html` | no | landing page only |
+| `Free Port Scanner Report (Light).html` | no | Pentest-Tools Nuxt shell; embedded JSON holds CMS/banners only |
+| `Blocked Page.html` | no | JS-rendered block page |
+| `portScan/*.png` ×3 | n/a | images; unreadable in agent environment (no OCR) |
+| `185.146.233.0_24 IP range details _ IPinfo.html` | yes | genuine third-party data, see below |
+
+Conclusion: a second-vantage port list is simply not available in text form.
+Our full-TCP result (only 22/tcp open) therefore stands as primary evidence
+from one vantage point, with the limitation stated. No discrepancy can be
+claimed either way.
+
+### What the IPinfo artifact DOES corroborate
+
+From `IPinfo.html` (saved by owner 2026-08-24 09:16):
+
+```
+AS200651 — FlokiNET ehf   BGP Prefix: 185.146.233.0/24
+Pingable IPs: 119         Routers: 0
+ProbeNet measurement: Bucharest, RO -> 185.146.233.219, 9.577 ms
+                          (August 20, 2026)
+```
+
+- Independently confirms ASN + org + prefix (third source after RDAP and
+  Team Cymru) — recorded in `01-rdap-context.md`.
+- "Pingable IPs: 119" across the /24 implies most addresses answer ICMP,
+  i.e., the block is not blackholed wholesale — making our observation that
+  all TCP ports except 22 are *filtered* look like deliberate per-host or
+  per-port firewall policy rather than upstream null-routing.
+- The Bucharest ProbeNet ping succeeding to .219 shows at least ICMP
+  reachability from outside Iceland; combined with our SSH banner success,
+  the host is reachable internationally — so if other online scanners
+  reported different results, timing/rate-limiting would be the likeliest
+  cause, not geo-blocking.
 
 ## Stage 3: service identification on open port
 
