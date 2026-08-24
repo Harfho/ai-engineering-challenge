@@ -227,11 +227,14 @@ network dependency — embeddings here are an optional quality upgrade, not
 a dependency. (Hybrid scoring already includes an embedding cosine slot.)
 
 **"How do you know retrieval works?"**
-Tests assert behavior end-to-end: paraphrased queries rank the correct
-reminder first; an adversarial battery of 20 unrelated developer requests
-(including "retry the flaky UI animation assertion") fires nothing; direct
-matches must outrank expanded ones; results survive a persistence roundtrip.
-30 tests, all offline/deterministic.
+Retrieval quality is MEASURED, not asserted: a labeled set of 20
+reviewer-style positive queries + 20 adversarial negatives
+(`evaluation.py`, report via `examples/retrieval_eval.py`). At the shipped
+threshold: precision 1.00, recall 1.00, false-positive rate 0.00, top-1
+accuracy 1.00 — stable across thresholds 0.30–0.55, and floors are enforced
+in tests so calibration can't silently regress. Direct matches must outrank
+expanded ones; results survive a persistence roundtrip.
+36 tests, all offline/deterministic.
 
 **"What are its limits?"** (say these proactively — credibility)
 Batch-only learning (no streaming updates) · category table maintenance

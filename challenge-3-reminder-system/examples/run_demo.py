@@ -47,6 +47,19 @@ def main() -> None:
         print(f"      action   : {r.recommended_action}")
         print(f"      evidence : log rows {r.evidence_log_ids}")
 
+    derived = [r for r in pipeline.service.list_reminders()
+               if r.recommended_action.startswith("No curated playbook")]
+    if derived:
+        r = derived[0]
+        print("\n[3b] Provenance of a reminder born from the logs "
+              "(no code, rule, or text below exists anywhere in the source):")
+        print(f"    {r.reminder_id}")
+        print(f"      pattern      : {r.source_pattern_id}")
+        print(f"      occurrences  : {r.frequency}")
+        print(f"      generated at : {r.created_at}")
+        print(f"      evidence     : log rows {r.evidence_log_ids}")
+        print(f"      action       : {r.recommended_action.splitlines()[0]}")
+
     queries = [
         "I need to add a new column to the users table for email preferences",
         "call the shipping rates API for all zones in one go",

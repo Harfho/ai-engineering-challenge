@@ -10,6 +10,10 @@ Message normalization replaces numbers, uuids, hashes, paths and quoted
 strings with placeholders so that recurring *shapes* of failure cluster
 together even when details differ.
 
+Rows whose result records success are never error events, no matter what
+residual error text they carry (contradictory outcomes resolve in favor of
+the recorded outcome).
+
 An optional LLMProvider may enrich events with a category/summary, but never
 gates detection — the system works fully without it.
 """
@@ -104,6 +108,12 @@ def identify_errors(logs: List[LogEntry],
     llm = llm or NullLLM()
     events: List[ErrorEvent] = []
     for e in logs:
+        # Contradictory outcomes: when the recorded result says the
+        # interaction succeeded, residual error text (from an earlier
+        # attempt inside the same interaction, say) must not count as a
+        # failure — otherwise noisy successes inflate patterns.
+        if e.result.strip().lower() in ("success", "succeeded"):
+            continue
         signals = detect_signals(e)
         if not signals:
             continue

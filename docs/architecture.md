@@ -3,7 +3,7 @@
 Per the assessment brief, detailed architecture lives with its challenge:
 
 - **Challenge 3 (reminder system)**: [`challenge-3-reminder-system/docs/architecture.md`](../challenge-3-reminder-system/docs/architecture.md)
-  — status: **implemented and tested** (30/30 offline tests; the document
+  — status: **implemented and tested** (36/36 offline tests; the document
   reflects the system as built, including design pivots and their reasons).
   Runnable prototype: see that challenge's `README.md` quick start.
 

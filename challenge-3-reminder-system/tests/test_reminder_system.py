@@ -85,6 +85,26 @@ class TestIngest(unittest.TestCase):
         self.assertEqual(n, 0)
         self.assertTrue(problems and "invalid json" in problems[0])
 
+    def test_empty_inputs_ingest_cleanly(self):
+        with tempfile.TemporaryDirectory() as td:
+            empty_jl = Path(td) / "empty.jsonl"
+            empty_jl.write_text("", encoding="utf-8")
+            s1 = Store(":memory:")
+            self.assertEqual(ingest_file(str(empty_jl), s1), (0, []))
+            empty_arr = Path(td) / "empty.json"
+            empty_arr.write_text("[]", encoding="utf-8")
+            s2 = Store(":memory:")
+            self.assertEqual(ingest_file(str(empty_arr), s2), (0, []))
+        self.assertEqual(s1.count("logs"), 0)
+        self.assertEqual(s2.count("logs"), 0)
+
+    def test_whitespace_only_lines_skipped(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "blanky.jsonl"
+            path.write_text("\n   \n\t\n", encoding="utf-8")
+            n, problems = ingest_file(str(path), Store(":memory:"))
+        self.assertEqual((n, problems), (0, []))
+
 
 class TestAnalysis(unittest.TestCase):
     def test_identifies_errors_and_ignores_success(self):
@@ -174,6 +194,43 @@ class TestPatterns(unittest.TestCase):
     def test_below_min_frequency_dropped(self):
         evs = [_ev(1, "disk full on volume"), _ev(2, "disk full on volume")]
         self.assertEqual(extract_patterns(evs, min_frequency=3), [])
+
+    def test_near_duplicate_wording_clusters_together(self):
+        """Same failure, different phrasing — lexical tier must catch it."""
+        evs = [
+            _ev(1, "payment webhook signature check failed",
+                session="sessA"),
+            _ev(2, "webhook payment signature verification failed",
+                session="sessB"),
+        ]
+        pats = extract_patterns(evs)
+        self.assertEqual(len(pats), 1)
+        self.assertEqual(pats[0].frequency, 2)
+
+    def test_contradictory_outcomes_failures_only(self):
+        """The same message marked success in one session and failure in
+        others: success rows are never error events, and the pattern counts
+        only real failures."""
+        logs = [
+            LogEntry(session_id="sOK", timestamp="t1", agent="a",
+                     result="success", error=""),
+            LogEntry(session_id="sF1", timestamp="t2", agent="a",
+                     result="failure",
+                     error="payment webhook signature check failed"),
+            LogEntry(session_id="sF2", timestamp="t3", agent="a",
+                     result="failure",
+                     error="payment webhook signature check failed"),
+            LogEntry(session_id="sLIE", timestamp="t4", agent="a",
+                     result="success",  # contradictory outcome
+                     error="payment webhook signature check failed"),
+        ]
+        events = identify_errors(logs)
+        rows = {e.log_row_id for e in events}
+        self.assertNotIn(0, rows)   # clean success ignored
+        self.assertNotIn(3, rows)   # 'success' result wins over error text
+        pats = extract_patterns(events)
+        self.assertEqual(len(pats), 1)
+        self.assertEqual(pats[0].frequency, 2)  # the two true failures
 
 
 class TestReminders(unittest.TestCase):
@@ -301,6 +358,34 @@ class TestRetrieval(unittest.TestCase):
             after = [r.to_dict()
                      for r in ReminderService(Store(db)).list_reminders()]
         self.assertEqual(before, after)
+
+
+class TestRetrievalQuality(unittest.TestCase):
+    """The labeled evaluation set from evaluation.py, enforced as floors so
+    calibration cannot silently regress. Full sweep: examples/retrieval_eval.py"""
+
+    FLOORS = {"precision": 0.95, "recall": 0.95,
+              "false_positive_rate": 0.0, "top1_accuracy": 0.90}
+
+    def test_labeled_set_meets_floors_at_default_threshold(self):
+        from reminder_system.evaluation import evaluate
+        svc = build_pipeline().service
+        m = evaluate(svc, threshold=0.45)
+        for metric, floor in self.FLOORS.items():
+            self.assertGreaterEqual(
+                m[metric], floor,
+                f"{metric}={m[metric]:.2f} below floor {floor}: {m}")
+
+    def test_threshold_sits_inside_stable_plateau(self):
+        """0.45 must not be a knife-edge: recall must hold across the
+        neighborhood (selection audit from the sweep)."""
+        from reminder_system.evaluation import evaluate
+        svc = build_pipeline().service
+        for t in (0.35, 0.40, 0.50, 0.55):
+            m = evaluate(svc, threshold=t)
+            self.assertGreaterEqual(m["recall"], 0.90, f"threshold {t}: {m}")
+            self.assertEqual(m["false_positive_rate"], 0.0,
+                             f"threshold {t}: {m}")
 
 
 class TestAPI(unittest.TestCase):

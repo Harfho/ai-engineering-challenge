@@ -18,7 +18,10 @@ PYTHONPATH=src python3 -m unittest discover tests -v
 # 2. Run the end-to-end demo
 PYTHONPATH=src python3 examples/run_demo.py
 
-# 3. Start the HTTP API on :8000
+# 3. Measure retrieval quality (labeled eval set)
+PYTHONPATH=src python3 examples/retrieval_eval.py
+
+# 4. Start the HTTP API on :8000
 PYTHONPATH=src python3 -c "
 from reminder_system.store import Store
 from reminder_system.pipeline import Pipeline
@@ -66,8 +69,11 @@ Key behaviors:
   seeds (e.g. "column" + "table" ⇒ schema work). Generic advice vocabulary
   ("retry", "check") never matches, so unrelated requests get silence;
   matched reminders come ranked with bounded relevance scores and
-  `matched_on` provenance. Calibrated against a 20-query adversarial
-  battery in the test suite.
+  `matched_on` provenance. Quality is MEASURED on a labeled set
+  (`evaluation.py`: 20 reviewer-style positive queries + 20 adversarial
+  negatives): at the shipped threshold, precision 1.00, recall 1.00,
+  false-positive rate 0.00, top-1 accuracy 1.00 — and the threshold sits
+  inside a plateau (0.30–0.55), not on a knife edge.
 - **Every reminder is evidence-linked** to the log rows that justify it,
   and the store is safe under the threaded HTTP server.
 
@@ -85,12 +91,14 @@ src/reminder_system/
   reminders.py    layered content: authored lesson > curated playbook >
                   evidence-derived fallback; confidence scoring
   retrieval.py    gated TF-IDF + concept bridging + optional embedding cosine
+  evaluation.py   labeled query set + precision/recall/FPR/top-k harness
   pipeline.py     orchestration facade
   api.py          stdlib HTTP API (health / list / query)
 data/sample_logs.jsonl   multi-session history incl. one malformed line and
                          failures outside every built-in category
 examples/run_demo.py     reproducible end-to-end demo
-tests/                   30 stdlib-unittest cases, fully offline
+examples/retrieval_eval.py  retrieval quality report (threshold sweep)
+tests/                   36 stdlib-unittest cases, fully offline
 docs/architecture.md     design decisions & trade-offs (read this second)
 ```
 

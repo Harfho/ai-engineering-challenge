@@ -1,8 +1,9 @@
 # Architecture — Model-Agnostic Reminder System
 
 > STATUS: final. This document reflects the system as implemented and
-> tested (30/30 offline tests, reproducible demo). Where a design changed
-> during development, the *reason* is recorded — dead ends are evidence.
+> tested (36/36 offline tests, reproducible demo, measured retrieval
+> quality). Where a design changed during development, the *reason* is
+> recorded — dead ends are evidence.
 
 ## 1. Components
 
@@ -124,9 +125,13 @@ below for the first):
   cosine. The ratio form keeps scores separated instead of saturating near
   1.0; expansion-only matches are capped at 0.78 so they can't outrank real
   evidence. Threshold default 0.45.
-- Calibrated against a 20-query adversarial battery (unrelated developer
-  requests must fire nothing) plus positive paraphrase cases, both enforced
-  in the test suite.
+- Calibrated on a labeled set in `evaluation.py`: 20 reviewer-style
+  positive queries (each with an expected-reminder marker) + 20 adversarial
+  negatives. Measured at the shipped threshold: precision 1.00, recall
+  1.00, FPR 0.00, top-1 accuracy 1.00; the sweep shows the same result
+  holds across 0.30–0.55 and degrades only at 0.60 — threshold selection is
+  auditable (`examples/retrieval_eval.py`), not asserted. Floors from this
+  set are enforced in the test suite so calibration cannot silently regress.
 
 Retrieval **filters, it does not dump**: below-threshold matches return as
 silence. A reminder system that interrupts on weak associations trains users
@@ -195,16 +200,22 @@ a reminder fired — machine-readable trust.
 
 ## 8. Testing strategy
 
-30 tests, stdlib `unittest`, fully offline and deterministic:
+36 tests, stdlib `unittest`, fully offline and deterministic:
 
-- **Per stage**: ingest validation/coercion incl. whole-file JSON arrays;
-  error identification incl. normalization stripping ids; clustering
-  (recurrence gates, session spread, identical-failure clustering);
-  reminder field bounds + evidence integrity + action routing.
+- **Per stage**: ingest validation/coercion incl. whole-file JSON arrays,
+  empty inputs, whitespace-only files; error identification incl.
+  normalization stripping ids and contradictory-outcome resolution (a
+  `success` result never becomes an error event, even with residual error
+  text); clustering (recurrence gates, session spread, identical-failure
+  clustering, near-duplicate wording); reminder field bounds + evidence
+  integrity + action routing.
 - **Adversarial regressions**: uncategorized events must not corrupt
   category-cluster counts (index-bug regression); a 20-query unrelated-
   request battery must fire nothing; direct matches must outrank expanded
   ones.
+- **Measured retrieval quality**: the labeled set in `evaluation.py`
+  enforced as floors (precision/recall ≥ 0.95, FPR = 0.00, top-1 ≥ 0.90)
+  plus a plateau check that threshold 0.45 is not a knife edge.
 - **Integration**: full pipeline on the sample corpus; SQLite persistence
   roundtrip (same reminders after reload).
 - **API**: real HTTP over ephemeral port — health, query success, 422
