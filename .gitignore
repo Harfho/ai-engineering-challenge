@@ -1,23 +1,19 @@
 # Python
 __pycache__/
 *.py[cod]
-.venv/
-venv/
-.pytest_cache/
 *.egg-info/
 
-# Challenge 3 generated artifacts
+# Databases / generated artifacts
 *.db
 *.sqlite3
 
-# Secrets / environment — never commit
+# Virtualenvs & caches
+.venv/
+venv/
 .env
-.env.*
-secrets*
-*_token*
+.pytest_cache/
+.ruff_cache/
 
-# OS / editors
+# OS junk
 .DS_Store
-.idea/
-.vscode/
-*.swp
+Thumbs.db

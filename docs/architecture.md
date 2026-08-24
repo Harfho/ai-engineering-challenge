@@ -3,7 +3,9 @@
 Per the assessment brief, detailed architecture lives with its challenge:
 
 - **Challenge 3 (reminder system)**: [`challenge-3-reminder-system/docs/architecture.md`](../challenge-3-reminder-system/docs/architecture.md)
-  — status: *skeleton, to be finalized in Phase 4 before implementation*.
+  — status: **implemented and tested** (21/21 offline tests; the document
+  reflects the system as built, including design pivots and their reasons).
+  Runnable prototype: see that challenge's `README.md` quick start.
 
 Challenges 1 and 2 are analysis deliverables; their "architecture" is the
 methodology in [`docs/methodology.md`](./methodology.md) plus per-challenge
