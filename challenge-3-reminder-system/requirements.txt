@@ -1,0 +1,9 @@
+# Runtime dependencies: NONE.
+#
+# The system is Python 3.12 standard library only (sqlite3, http.server,
+# dataclasses, json, hashlib). This is a deliberate choice — see
+# docs/architecture.md ("Dependency policy").
+#
+# Optional development extras (not required to run or test):
+#   pytest          # if you prefer pytest over stdlib unittest
+#   ruff            # linting

@@ -1,39 +1,90 @@
-# Challenge 3 — Model-Agnostic AI Reminder System
+# Challenge 3 — Contextual Reminder System (MVP)
 
-**Objective:** working prototype that mines historical AI interaction logs for
-recurring errors and serves context-relevant reminders back to agents through a
-provider-independent API.
-**Status:** Not started — architecture doc due at the start of Phase 4,
-implementation after.
+Learns recurring failure patterns from past AI-agent session logs and
+surfaces only the applicable lessons when a new, similar task begins.
 
-## Pipeline (required by brief)
+**Model-agnostic by construction**: every vendor-specific capability sits
+behind an interface (`LLMProvider`, `EmbeddingProvider`) with deterministic
+offline fallbacks — the system runs fully without any AI provider.
+
+## Quick start (zero dependencies)
+
+Requires Python 3.12+ only. From this directory:
+
+```bash
+# 1. Run the test suite (stdlib unittest — no installs)
+PYTHONPATH=src python3 -m unittest discover tests -v
+
+# 2. Run the end-to-end demo
+PYTHONPATH=src python3 examples/run_demo.py
+
+# 3. Start the HTTP API on :8000
+PYTHONPATH=src python3 -c "
+from reminder_system.store import Store
+from reminder_system.pipeline import Pipeline
+from reminder_system.api import ApiServer
+p = Pipeline(Store('reminders.db'))
+p.ingest_logs('data/sample_logs.jsonl')
+p.build_reminders()
+ApiServer(p.service).serve_forever()
+"
+
+# in another terminal:
+curl -s localhost:8000/health
+curl -s localhost:8000/reminders | head -20
+curl -s -X POST localhost:8000/reminders/query \
+  -H 'Content-Type: application/json' \
+  -d '{"context": "I need to add a column to the users table"}'
+```
+
+## Pipeline
 
 ```
-logs → error identification → pattern extraction → reminder generation
-     → SQLite storage → context matching → agent-facing API
+logs.jsonl ──> ingest ──> identify errors ──> cluster patterns ──> generate reminders ──> SQLite
+                 (validated)  (deterministic      (category-first +       (rule-table actions,
+                               detectors +         lexical fallback)       evidence-linked)
+                               optional LLM)
+                                                                       │
+new user request ────────────────────────────────────────> retrieval <──┘
+                                              (TF-IDF + concept expansion
+                                               + optional embeddings)
 ```
 
-## Design commitments (initial; revisited in the architecture doc)
+Key behaviors:
+- **Errors are found by deterministic detectors** (error fields, failure
+  vocabulary, HTTP status, exit codes). An LLM may enrich categories, never
+  gate detection.
+- **Patterns require recurrence**: ≥2 occurrences across ≥2 sessions.
+  One bad session never becomes a nagging reminder.
+- **Retrieval filters, it does not dump**: unrelated requests get silence;
+  matched reminders come ranked with relevance scores and `matched_on`
+  evidence.
+- **Every reminder is evidence-linked** to the log rows that justify it.
 
-- **Language/stack:** Python 3.12, stdlib-first; heavy dependencies only with a
-  concrete justification written down
-- **Storage:** SQLite (acceptable per brief for MVP; justified by zero-ops,
-  single-file, queryable via SQL)
-- **Model independence:** every LLM/embedding call behind an abstract
-  `Provider` interface; deterministic local fallback so tests run offline
-- **Retrieval:** context matching must filter/rank, not dump all reminders
-  (candidate approaches compared in the architecture doc)
-- **API:** HTTP JSON endpoint(s) like `POST /reminders/query`
-- **Tests:** ingestion, extraction, patterns, persistence, retrieval, API,
-  edge cases — runnable offline in CI-style fashion
+## Layout
 
-## Deliverables
+```
+src/reminder_system/
+  models.py       dataclasses shared by all stages
+  store.py        SQLite persistence (logs append-only; reminders derived)
+  providers.py    LLMProvider / EmbeddingProvider + offline fallbacks
+  ingest.py       JSONL/JSON loading, validation, malformed-line reporting
+  analysis.py     error detection, normalization, categorization
+  patterns.py     clustering (category-first; lexical fallback), triggers
+  reminders.py    rule-table action selection, confidence scoring
+  retrieval.py    TF-IDF + query expansion + optional embedding cosine
+  pipeline.py     orchestration facade
+  api.py          stdlib HTTP API (health / list / query)
+data/sample_logs.jsonl   realistic multi-session history incl. one bad line
+examples/run_demo.py     reproducible end-to-end demo
+tests/                   19 stdlib-unittest cases, fully offline
+docs/architecture.md     design decisions & trade-offs (read this second)
+```
 
-- `docs/architecture.md` (components, data flow, trade-offs) — before code
-- `src/`, `tests/`, `examples/` (reproducible demo), `data/` (realistic sample logs)
-- `requirements.txt`
+## Extending
 
-## Non-goals (MVP)
-
-No k8s/queues/vector DBs unless justified; no multi-user auth; no realtime
-streaming ingestion.
+- Plug a real LLM: implement `LLMProvider.analyze_error` and pass it to
+  `Pipeline(store, llm=...)`. See the docstring example in `providers.py`.
+- Plug real embeddings: pass an `EmbeddingProvider` to `ReminderService`.
+- New issue types: add entries to `analysis.CATEGORIES` +
+  `reminders.CATEGORY_ACTIONS` (data, not code).

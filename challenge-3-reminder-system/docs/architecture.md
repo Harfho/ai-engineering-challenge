@@ -1,47 +1,198 @@
 # Architecture — Model-Agnostic Reminder System
 
-> STATUS: skeleton. To be **finalized before implementation** (Phase 4).
-> Decisions below marked CANDIDATE until written up with trade-offs.
+> STATUS: final. This document reflects the system as implemented and
+> tested (19/19 offline tests, reproducible demo). Where a design changed
+> during development, the *reason* is recorded — dead ends are evidence.
 
 ## 1. Components
 
-> TODO: log ingester, error identifier, pattern extractor, reminder generator,
-> reminder store, context retriever, API server — with responsibilities.
+| Component | File | Responsibility |
+|---|---|---|
+| Ingest | `ingest.py` | Load JSONL/JSON logs, validate required fields, coerce bad metadata, report malformed lines without aborting |
+| Error identifier | `analysis.py` | Detect failures via deterministic signals; normalize messages (ids/paths/numbers → placeholders); assign category |
+| Pattern extractor | `patterns.py` | Cluster error events into recurring patterns; derive trigger tokens; enforce recurrence thresholds |
+| Reminder generator | `reminders.py` | Turn patterns into actionable reminders via rule tables; compute confidence; link evidence |
+| Store | `store.py` | SQLite persistence: append-only `logs`, derived-and-regenerated `reminders` |
+| Retriever / service | `retrieval.py` | Score new task context against reminder library; return top-k above threshold with explanations |
+| API | `api.py` | Stdlib HTTP server exposing health / list / query |
+| Providers | `providers.py` | The model-agnostic boundary: `LLMProvider`, `EmbeddingProvider` ABCs + offline fallbacks |
 
 ## 2. Data flow
 
-> TODO: end-to-end diagram (text) from raw logs to served reminders.
+```
+logs.jsonl ─> ingest ─> LogEntry rows ─> identify_errors ─> ErrorEvents
+                 │           (SQLite)         (detectors +        │
+                 │                             categories)        ▼
+                 │                                        extract_patterns
+                 │                                     (category-first groups,
+                 │                                      lexical fallback)
+                 │                                              │
+                 ▼                                              ▼
+          raw history                        generate_reminders ─> Reminder rows
+                                                                        │
+   "add a column to users" ──────> Retriever <──────────────────────────┘
+                                    │ TF-IDF + concept expansion
+                                    │ + optional embedding cosine
+                                    ▼
+                     [{reminder, relevance, matched_on}] or silence
+```
+
+Batch direction (left) runs once per ingestion/build cycle. Query direction
+(right) is per user request and never mutates state.
 
 ## 3. Storage
 
-CANDIDATE: single SQLite DB, tables: `logs`, `errors`, `patterns`,
-`reminders`. Justification + schema to be written.
+**Decision: single SQLite file** (`store.py`). Tables:
+
+- `logs(row_id PK, session_id, timestamp, agent, user_request, agent_action,
+  result, error, metadata JSON)` — append-only ground truth.
+- `reminders(reminder_id PK, description, trigger_context JSON,
+  recommended_action, evidence_log_ids JSON, confidence, frequency,
+  created_at, source_pattern_id)` — fully derived data, replaced atomically
+  on every build (`replace_reminders` wraps DELETE+INSERT in one transaction).
+
+Justification: zero-operations, ships in stdlib, trivially resettable in
+tests, SQL-inspectable for debugging. Write pattern is batch-insert/read-many.
+Rejected: Postgres (ops burden, no benefit at MVP scale), flat files (no
+indexed queries, no atomic regeneration).
+
+Errors/patterns are **not** persisted: they are cheap to recompute from logs
+and keeping them derived avoids schema drift between pipeline versions.
 
 ## 4. Processing pipeline
 
-> TODO: batch pipeline stages; where LLM is optional vs deterministic.
+Stages (orchestrated by `pipeline.Pipeline`):
 
-## 5. Retrieval strategy
+1. **Ingest** — validation only; one bad line skips that line, not the run.
+2. **Identify errors** — deterministic detectors:
+   `error_field`, failure vocabulary in result, `metadata.status ≥ 400`,
+   nonzero exit codes, combined-keyword fallback. Each event records which
+   signals fired (auditable).
+3. **Categorize** (deterministic) — keyword rules map messages to issue
+   types (`database_migration`, `api_rate_limit`, …). An injected LLM may
+   override/refine the category but can *never suppress detection*: if the
+   provider throws or returns junk, the deterministic path still produced an
+   event. This ordering is the core of "model-agnostic": AI is an enhancer,
+   not a dependency.
+4. **Cluster patterns** — see §5a below for the algorithm and its evolution.
+5. **Generate reminders** — action chosen by majority vote over member
+   categories against `CATEGORY_ACTIONS`; confidence = bounded function of
+   frequency and session spread (capped at 0.95 — nothing learned from logs
+   should ever claim certainty); evidence = member log row ids.
 
-CANDIDATES to compare: keyword/BM25-style scoring over triggers; embedding
-similarity behind provider interface; hybrid. Decision + trade-offs TODO.
+## 5a. Clustering: what we tried and why category-first won
+
+First implementation: pure lexical clustering (weighted token-Jaccard,
+single linkage). It failed exactly where it matters: the same root cause
+phrased differently ("schema drift detected", "relation does not exist",
+"missing migration") scored pairwise similarity 0.08–0.29 — far below any
+safe merge threshold, while risking false merges of unrelated failures if
+the threshold were simply lowered. Lexical overlap cannot bridge paraphrase.
+
+Second implementation (shipped): **category-first grouping**. Events sharing
+a deterministic category form one candidate pattern directly; only
+uncategorized events fall back to lexical clustering. Rationale: the
+category rules are already the system's semantic prior — using them for
+grouping costs nothing extra and produces stable, explainable clusters.
+Trade-off accepted: two genuinely distinct issues sharing a category would
+merge (mitigation: keep categories narrow; sub-splitting can be added later).
+
+Recurrence gates: ≥ `min_frequency` (2) occurrences across ≥ `min_sessions`
+(2) sessions. A single bad afternoon must never become a permanent nag.
+
+Trigger tokens: tokens present in ≥60% of cluster members (after light
+plural-stemming), most frequent first — the stable shape of the failure,
+later used by retrieval.
+
+## 5b. Retrieval strategy
+
+**Shipped: hybrid deterministic scoring**, `rel = tanh(direct + 0.5·expansion + 0.5·cosine)`:
+
+- Direct TF-IDF-weighted token overlap between query and each reminder's
+  triggers (3× weight) + description + action text.
+- Concept-group query expansion (small curated synonym sets: e.g.
+  column/table/alter → schema/migration/database). Needed because users say
+  "add a column", not "check migration discipline". Deterministic and
+  auditable, unlike latent embeddings.
+- Optional cosine from the pluggable embedder; default `HashingEmbedder`
+  (feature hashing — captures token structure offline, no downloads).
+- `tanh` calibration bounds relevance to [0,1) independent of query length;
+  earlier best-score normalization was rejected because long natural-language
+  requests diluted their own topical core below threshold (observed in
+  testing: 8-token query scored 0.13 despite perfect topical match).
+
+Retrieval **filters, it does not dump**: below-threshold matches return as
+silence. A reminder system that interrupts on weak associations trains users
+to ignore it — precision matters more than recall here.
+
+Rejected alternatives: pure embeddings (opaque, needs network/model),
+pure keyword (failed the paraphrase test above), LLM reranking per query
+(non-deterministic, latency, cost — and unnecessary at library sizes ≤100s).
 
 ## 6. Model abstraction
 
-> TODO: `LLMProvider` / `EmbeddingProvider` interfaces; deterministic local
-> fallback implementations; how provider selection is configured.
+```python
+class LLMProvider(ABC):            # optional semantic enrichment
+    def analyze_error(raw, context) -> {"category", "summary"}
+
+class EmbeddingProvider(ABC):      # optional retrieval upgrade
+    def embed(text) -> vector
+```
+
+Shipped fallbacks: `NullLLM` (no-op), `HashingEmbedder` (local, seeded,
+deterministic). Selection is constructor injection — no config files, no
+implicit network calls. Contract: providers may throw; pipeline catches and
+falls back deterministically. Swapping in OpenAI/Anthropic/local-LLM touches
+one class and one argument, zero pipeline changes (docstring example in
+`providers.py` shows the full recipe).
 
 ## 7. API design
 
-> TODO: endpoints (`POST /reminders/query`, health), request/response schemas,
-> error semantics.
+Stdlib `http.server` (ThreadingHTTPServer). Zero-dependency rationale:
+brief prioritizes simple reproducible setup; framework swap touches only
+`api.py`.
+
+| Endpoint | Semantics |
+|---|---|
+| `GET /health` | liveness, `200 {"status":"ok"}` |
+| `GET /reminders` | full current library |
+| `POST /reminders/query` | body `{"context": str (required non-empty), "top_k": int 1–10 (default 3)}` |
+
+Error semantics: malformed JSON → `400`; missing/empty `context` or invalid
+`top_k` → `422` with explanation; unknown route → `404`. Response adds
+per-hit `relevance` and `matched_on` so callers (and humans) can audit *why*
+a reminder fired — machine-readable trust.
 
 ## 8. Testing strategy
 
-> TODO: unit tests per component + integration test of full pipeline +
-> offline determinism guarantees.
+19 tests, stdlib `unittest`, fully offline and deterministic:
 
-## 9. Trade-offs
+- **Per stage**: ingest validation/coercion; error identification incl.
+  normalization stripping ids; clustering (recurrence gates, session spread);
+  reminder field bounds + evidence integrity + action routing.
+- **Integration**: full pipeline on the sample corpus; SQLite persistence
+  roundtrip (same reminders after reload).
+- **Retrieval behavior**: correct ranking for paraphrased schema/API queries,
+  silence for irrelevant ones, `top_k` respected.
+- **API**: real HTTP over ephemeral port — health, query success, 422
+  validation, 404 routing.
 
-> TODO: what we accept by keeping the MVP simple (e.g., no incremental
-> re-learning, coarse retrieval) and why that's acceptable for the brief.
+Determinism guarantee: no network, no randomness beyond uuid ids (excluded
+from assertions), fixed sample data. Tests double as behavioral spec.
+
+## 9. Trade-offs consciously accepted
+
+1. **Batch-only learning** — reminders regenerate per build; no incremental
+   streaming updates. Acceptable: learning signal arrives in log batches;
+   rebuild is seconds at MVP scale.
+2. **Category table maintenance** — coverage grows by editing
+   `CATEGORIES`/`CATEGORY_ACTIONS` (data, reviewable in PRs). The LLM
+   provider path exists precisely to relax this later without code changes.
+3. **Coarse within-category merging** — two distinct issues sharing one
+   category merge. Mitigated by narrow category definitions; revisit with
+   sub-clustering if real corpora show collisions.
+4. **Keyword retrieval ceiling** — concept expansion covers observed
+   phrasings, not open-vocabulary paraphrase. The `EmbeddingProvider` seam
+   is the designed upgrade path; shipping without it keeps tests offline.
+5. **No auth/multi-tenancy** — out of MVP scope; the API layer isolates this
+   concern cleanly behind `ReminderService`.
